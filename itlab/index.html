@@ -104,6 +104,11 @@ th{color:var(--mute);font-weight:500;font-size:12px}
   main{padding:12px;padding-bottom:70px}
   #log{width:auto;left:12px}
 }
+.libbtn{padding:1px 7px;font-size:11px;border-radius:12px;font-weight:500}
+.libread{color:var(--acc);font-size:13px;text-decoration:none;font-weight:600}
+.libcard h3{font-size:15px}
+@keyframes flashring{0%{box-shadow:0 0 0 0 var(--acc)}30%{box-shadow:0 0 0 4px var(--acc)}100%{box-shadow:0 0 0 0 transparent}}
+.flash{animation:flashring 1.8s ease-out 2}
 </style>
 </head>
 <body>
@@ -182,6 +187,7 @@ offsite:{t:"Offsite copy",d:"A backup copy stored at a different site or cloud, 
 restore:{t:"Restore test",d:"Actually recovering a VM from backup to prove it works. An untested backup is a hope, not a plan.",h:"Run restore tests on a schedule (e.g., quarterly) into an isolated network.",a:"Veeam SureBackup / Rubrik automated recovery testing."},
 rpo:{t:"RPO / RTO",d:"Recovery Point Objective = how much data you can afford to lose (time between backups). Recovery Time Objective = how long you can be down.",h:"Agree on these with the business per application, then design backup frequency and DR to meet them.",a:"DR orchestration: Azure Site Recovery, VMware Live Recovery (SRM), Zerto."},
 scenario:{t:"Build scenarios",d:"Guided challenges with objectives checked live against your lab. Each mirrors a real IT project.",h:"Start a scenario; the checklist updates as you build. Hints point to the right page.",a:"Real labs: Microsoft Learn sandboxes, VMware Hands-on Labs, a home lab on Proxmox or Hyper-V."},
+library:{t:"Learning Library",d:"50 networking guides from natted.cloud/learn, each with a short summary and links to the simulator pages where you can practice the topic.",h:"Open Learning Library in the menu, search or filter by category, then use \"Try it in the simulator\" to jump to the right card. On any page, tap a 📚 button or pin a ? tip to see related guides.",a:"Other free learning: Microsoft Learn, VMware Hands-on Labs, Cisco Networking Academy, Professor Messer (CompTIA Network+), Practical Networking."},
 posture:{t:"Security posture score",d:"A rough measure of how many core defensive controls are in place across identity, endpoints, network and backups.",h:"Enable controls on the Security page and build the supporting pieces they require.",a:"Microsoft Secure Score, CIS Controls self-assessment, cyber-insurance questionnaires."}
 };
 
@@ -462,15 +468,16 @@ const SCN=[
 function scnState(){if(!S.scenario)return null;const s=SCN.find(x=>x.id===S.scenario.id);const res=s.obj.map(o=>o[1]());return{s,res,done:res.filter(Boolean).length}}
 
 /* ===================== RENDER ===================== */
-const TABS=[["dash","Dashboard"],["dc","Datacenter"],["virt","Virtualization"],["net","Network"],["id","Identity"],["sec","Security & Backup"],["scn","Scenarios"]];
+const TABS=[["dash","Dashboard"],["dc","Datacenter"],["virt","Virtualization"],["net","Network"],["id","Identity"],["sec","Security & Backup"],["scn","Scenarios"],["learn","Learning Library"]];
 function render(){
  document.body.classList.toggle("ms",S.platform==="microsoft");
  document.querySelectorAll("#platSeg button").forEach(b=>b.classList.toggle("on",b.dataset.v===S.platform));
  document.getElementById("nav").innerHTML=TABS.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${S.tab===k?"on":""}">${l}${k==="scn"&&S.scenario?' <span class="pill acc">live</span>':""}</button>`).join("");
- const V={dash:vDash,dc:vDC,virt:vVirt,net:vNet,id:vId,sec:vSec,scn:vScn}[S.tab]||vDash;
+ const V={dash:vDash,dc:vDC,virt:vVirt,net:vNet,id:vId,sec:vSec,scn:vScn,learn:vLearn}[S.tab]||vDash;
  document.getElementById("main").innerHTML=`<div class="banner">Training simulation — no real systems are touched. Console: <b>${T("console")}</b> · Management: <b>${T("mgr")}</b> ${tip("mgr")}</div>`+scnBar()+V();
  document.getElementById("logbd").innerHTML=S.log.map(l=>`<div class="lg-${l.lvl}">[${l.t}] ${esc(l.msg)}</div>`).join("")||'<div class="lg-info">No events yet.</div>';
  document.getElementById("logcount").textContent=S.log.length+" events ▾";
+ postRender();
 }
 function scnBar(){const st=scnState();if(!st)return"";
  if(st.done===st.res.length&&!S.scenario.done){S.scenario.done=true;S.scenario.end=Date.now();log(`SCENARIO COMPLETE: ${st.s.title}`,"ok")}
@@ -485,32 +492,32 @@ function vDash(){const p=posture();const on=S.vms.filter(v=>v.power==="on").leng
  <div class="grid g4" style="margin-bottom:12px">${stat(S.hosts.length,"Physical hosts","host")}${stat(`${on}/${S.vms.length}`,"VMs running","vm")}${stat(S.vlans.length,"VLANs","vlan")}${stat(S.ad.users.length,"AD users","user")}${stat(p.score+"%","Security posture","posture")}</div>
  <div class="grid g2">
  <div class="card"><h3>Topology ${tip("cluster")}</h3>${S.hosts.length?`<div class="topo">${S.clusters.map(c=>`<div class="clu"><div class="t">${esc(c.name)} ${c.ha?'<span class="pill ok">HA</span>':""}${c.drs?'<span class="pill acc">LB</span>':""}</div>${S.hosts.filter(h=>h.clusterId===c.id).map(hostBox).join("")||'<div class="empty">No members</div>'}</div>`).join("")}${unclustered.length?`<div class="clu" style="border-color:var(--line)"><div class="t" style="color:var(--mute)">Standalone hosts</div>${unclustered.map(hostBox).join("")}</div>`:""}</div>`:'<div class="empty">No hosts yet. Go to Datacenter or click "Load sample environment".</div>'}</div>
- <div class="card"><h3>Security posture ${tip("posture")}</h3><div class="score">${p.score}%</div>${bar(p.score)}<table style="margin-top:10px">${p.checks.map(c=>`<tr><td>${c[0]}</td><td>${c[1]?'<span class="pill ok">in place</span>':'<span class="pill bad">gap</span>'}</td></tr>`).join("")}</table></div>
+ <div class="card" data-anchor="dash-posture"><h3>Security posture ${tip("posture")} ${libBtn("posture")}</h3><div class="score">${p.score}%</div>${bar(p.score)}<table style="margin-top:10px">${p.checks.map(c=>`<tr><td>${c[0]}</td><td>${c[1]?'<span class="pill ok">in place</span>':'<span class="pill bad">gap</span>'}</td></tr>`).join("")}</table></div>
  </div>`}
 function hostBox(h){const u=hostUse(h);return`<div class="hostbox ${h.status}"><div class="row" style="justify-content:space-between"><b style="font-size:12px">${esc(h.name)}</b>${statusPill(h.status)}</div>
  <div style="font-size:11px;color:var(--mute)">${TERMS[h.hyp].hv} · RAM ${u.ram}/${h.ram} GB</div>${bar(u.ram/h.ram*100)}
  <div style="margin-top:5px">${S.vms.filter(v=>v.hostId===h.id).map(v=>`<span class="vmchip ${v.power}">${esc(v.name)}</span>`).join("")||'<span style="font-size:11px;color:var(--mute)">no VMs</span>'}</div></div>`}
 
 function vDC(){return`<h2>Datacenter ${tip("host")}</h2><p class="sub">Physical layer: rack servers, clusters and storage, managed through ${T("mgr")}.</p>
- <div class="card" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><h3>Hosts ${tip("hypervisor")}</h3><button class="pri" data-act="addHost">+ Add host</button></div>
+ <div class="card" data-anchor="dc-hosts" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><h3>Hosts ${tip("hypervisor")} ${libBtn("host")}</h3><button class="pri" data-act="addHost">+ Add host</button></div>
  ${S.hosts.length?`<div class="tw"><table><tr><th>Host</th><th>Hypervisor</th><th>Cluster</th><th>CPU (vCPU alloc) ${tip("overcommit")}</th><th>RAM</th><th>Status</th><th>Patched</th><th>Actions</th></tr>
  ${S.hosts.map(h=>{const u=hostUse(h),c=byId(S.clusters,h.clusterId);return`<tr><td><b>${esc(h.name)}</b><div style="font-size:11px;color:var(--mute)">${esc(h.vendor)}</div></td><td>${HVNAME[h.hyp]}</td><td>${c?esc(c.name):"—"}</td>
  <td>${u.vcpu}/${h.cpu*4}${bar(u.vcpu/(h.cpu*4)*100)}</td><td>${u.ram}/${h.ram} GB${bar(u.ram/h.ram*100)}</td><td>${statusPill(h.status)}</td><td>${h.patched?'<span class="pill ok">yes</span>':'<span class="pill warn">no</span>'}</td>
  <td><div class="row"><button class="sm" data-act="hostMaint" data-v="${h.id}" data-tip="maint">${h.status==="maintenance"?"Exit maint.":T("maint")}</button><button class="sm" data-act="patchHost" data-v="${h.id}" data-tip="patch">Patch</button>
  <button class="sm dan" data-act="failHost" data-v="${h.id}" data-tip="failure">${h.status==="failed"?"Repair":"Simulate failure"}</button><button class="sm" data-act="delHost" data-v="${h.id}">✕</button></div></td></tr>`}).join("")}</table></div>`:'<div class="empty">No hosts. Add your first server.</div>'}</div>
  <div class="grid g2">
- <div class="card"><div class="row" style="justify-content:space-between"><h3>Clusters ${tip("cluster")}</h3><button data-act="addCluster">+ Create cluster</button></div>
+ <div class="card" data-anchor="dc-clusters"><div class="row" style="justify-content:space-between"><h3>Clusters ${tip("cluster")} ${libBtn("ha")}</h3><button data-act="addCluster">+ Create cluster</button></div>
  ${S.clusters.map(c=>`<div class="ctl"><div><div class="nm">${esc(c.name)} <span class="pill">${c.hyp==="vmware"?"vSphere":"Failover Cluster"}</span></div><div class="ds">${S.hosts.filter(h=>h.clusterId===c.id).map(h=>esc(h.name)).join(", ")||"no hosts"}</div></div>
  <div class="row"><span style="font-size:12px">HA ${tip("ha")}</span><label class="sw"><input type="checkbox" ${c.ha?"checked":""} data-act="toggleCl" data-v="${c.id}" data-k="ha"><span></span></label>
  <span style="font-size:12px">LB ${tip("drs")}</span><label class="sw"><input type="checkbox" ${c.drs?"checked":""} data-act="toggleCl" data-v="${c.id}" data-k="drs"><span></span></label>
  <button class="sm" data-act="clusterHosts" data-v="${c.id}">Members</button><button class="sm" data-act="delCluster" data-v="${c.id}">✕</button></div></div>`).join("")||'<div class="empty">No clusters.</div>'}</div>
- <div class="card"><div class="row" style="justify-content:space-between"><h3>Storage ${tip("datastore")}</h3><button data-act="addStorage">+ Add storage</button></div>
+ <div class="card" data-anchor="dc-storage"><div class="row" style="justify-content:space-between"><h3>Storage ${tip("datastore")} ${libBtn("san")}</h3><button data-act="addStorage">+ Add storage</button></div>
  <div class="row" style="margin-bottom:6px;font-size:12px;color:var(--mute)">Types: SAN ${tip("san")} NAS ${tip("nas")} vSAN ${tip("vsan")} S2D ${tip("s2d")} Local ${tip("local")}</div>
  ${S.storage.length?`<table><tr><th>Name</th><th>Type</th><th>Capacity</th><th>Hosts</th><th></th></tr>${S.storage.map(s=>{const used=S.vms.filter(v=>v.storageId===s.id).reduce((a,v)=>a+v.disk,0)/1000;
  return`<tr><td>${esc(s.name)}</td><td><span data-tip="${s.type}">${STYPES[s.type]}</span></td><td>${used.toFixed(1)}/${s.cap} TB${bar(used/s.cap*100)}</td><td>${s.hostIds.length}</td><td><button class="sm" data-act="delStorage" data-v="${s.id}">✕</button></td></tr>`}).join("")}</table>`:'<div class="empty">No storage.</div>'}</div></div>`}
 
 function vVirt(){return`<h2>Virtualization — ${T("console")} ${tip("vm")}</h2><p class="sub">Provision and operate virtual machines. ${T("snap")}s ${tip("snap")} · ${T("mig")} ${tip("mig")}</p>
- <div class="card"><div class="row" style="justify-content:space-between"><h3>Virtual machines</h3><button class="pri" data-act="newVM">+ New VM</button></div>
+ <div class="card" data-anchor="virt-vms"><div class="row" style="justify-content:space-between"><h3>Virtual machines ${libBtn("vm")}</h3><button class="pri" data-act="newVM">+ New VM</button></div>
  ${S.vms.length?`<div class="tw"><table><tr><th>VM</th><th>Role ${tip("role")}</th><th>Size</th><th>Host</th><th>${T("store")}</th><th>Network</th><th>State</th><th>${T("snap")}s</th><th>Actions</th></tr>
  ${S.vms.map(v=>{const h=byId(S.hosts,v.hostId),st=byId(S.storage,v.storageId),n=byId(S.vlans,v.vlanId);return`<tr><td><b>${esc(v.name)}</b><div style="font-size:11px;color:var(--mute)">${esc(v.os)}</div></td><td>${esc(v.role)}</td><td>${v.vcpu} vCPU · ${v.ram} GB · ${v.disk} GB</td>
  <td>${h?esc(h.name):"?"}</td><td>${st?esc(st.name):"?"}</td><td>${n?"VLAN "+n.vlan:"—"}</td><td>${statusPill(v.power)} ${backedUp(v)?'<span class="pill acc">backed up</span>':""}</td><td>${v.snaps.length}</td>
@@ -518,24 +525,24 @@ function vVirt(){return`<h2>Virtualization — ${T("console")} ${tip("vm")}</h2>
  <button class="sm" data-act="snap" data-v="${v.id}" data-tip="snap">${T("snap")}</button>${v.snaps.length?`<button class="sm" data-act="revert" data-v="${v.id}">Revert</button><button class="sm" data-act="delSnaps" data-v="${v.id}">Consolidate</button>`:""}<button class="sm" data-act="delVM" data-v="${v.id}">✕</button></div></td></tr>`}).join("")}</table></div>`:'<div class="empty">No VMs. You need at least one host and one storage location first.</div>'}</div>`}
 
 function vNet(){return`<h2>Network ${tip("vlan")}</h2><p class="sub">Segmentation, switching, firewalling and core network services.</p><div class="grid g2">
- <div class="card"><div class="row" style="justify-content:space-between"><h3>VLANs & subnets ${tip("subnet")}</h3><button data-act="addVlan">+ Add VLAN</button></div>
+ <div class="card" data-anchor="net-vlan"><div class="row" style="justify-content:space-between"><h3>VLANs & subnets ${tip("subnet")} ${libBtn("vlan")}</h3><button data-act="addVlan">+ Add VLAN</button></div>
  ${S.vlans.length?`<table><tr><th>ID</th><th>Name</th><th>Subnet</th><th>Site</th><th>VMs</th><th></th></tr>${S.vlans.map(v=>`<tr><td>${v.vlan}</td><td>${esc(v.name)}</td><td>${esc(v.subnet)}</td><td>${esc(v.site)}</td><td>${S.vms.filter(x=>x.vlanId===v.id).length}</td><td><button class="sm" data-act="delVlan" data-v="${v.id}">✕</button></td></tr>`).join("")}</table>`:'<div class="empty">No VLANs.</div>'}</div>
- <div class="card"><div class="row" style="justify-content:space-between"><h3>Virtual switches ${tip("vswitch")}</h3><button data-act="addSwitch">+ Add ${T("vsw")}</button></div>
+ <div class="card" data-anchor="net-switch"><div class="row" style="justify-content:space-between"><h3>Virtual switches ${tip("vswitch")} ${libBtn("vswitch")}</h3><button data-act="addSwitch">+ Add ${T("vsw")}</button></div>
  ${S.switches.map(s=>`<div class="ctl"><div><div class="nm">${esc(s.name)}</div><div class="ds">${esc(s.type)} · ${s.uplinks} uplink(s) · ${s.vlanIds.length} VLAN(s)</div></div><button class="sm" data-act="delSwitch" data-v="${s.id}">✕</button></div>`).join("")||'<div class="empty">No virtual switches.</div>'}</div>
- <div class="card"><div class="row" style="justify-content:space-between"><h3>Firewall rules ${tip("firewall")}</h3><div class="row"><button data-act="addFw">+ Rule</button><button data-act="addDefaultDeny" data-tip="defaultdeny">+ Default deny</button></div></div>
+ <div class="card" data-anchor="net-fw"><div class="row" style="justify-content:space-between"><h3>Firewall rules ${tip("firewall")} ${libBtn("firewall")}</h3><div class="row"><button data-act="addFw">+ Rule</button><button data-act="addDefaultDeny" data-tip="defaultdeny">+ Default deny</button></div></div>
  <p class="ds" style="font-size:12px;color:var(--mute);margin:0 0 6px">Evaluated top to bottom; first match wins.</p>
  ${S.fw.length?`<div class="tw"><table><tr><th>#</th><th>Name</th><th>Src → Dst</th><th>Port</th><th>Action</th><th></th></tr>${S.fw.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.src)} → ${esc(r.dst)}</td><td>${esc(r.port)}</td><td><span class="pill ${r.action==="Allow"?"ok":"bad"}">${r.action}</span></td><td><div class="row"><button class="sm" data-act="fwUp" data-v="${r.id}">↑</button><button class="sm" data-act="fwDown" data-v="${r.id}">↓</button><button class="sm" data-act="delFw" data-v="${r.id}">✕</button></div></td></tr>`).join("")}</table></div>`:'<div class="empty">No rules.</div>'}</div>
- <div class="card"><div class="row" style="justify-content:space-between"><h3>DHCP scopes ${tip("dhcp")}</h3><button data-act="addDhcp">+ Scope</button></div>
+ <div class="card" data-anchor="net-dhcp"><div class="row" style="justify-content:space-between"><h3>DHCP scopes ${tip("dhcp")} ${libBtn("dhcp")}</h3><button data-act="addDhcp">+ Scope</button></div>
  ${S.dhcp.map(d=>{const v=byId(S.vlans,d.vlanId);return`<div class="ctl"><div><div class="nm">${v?esc(v.name)+" ("+esc(v.subnet)+")":"?"}</div><div class="ds">Range .${esc(d.range)} · ${d.lease}-day lease</div></div><button class="sm" data-act="delDhcp" data-v="${d.id}">✕</button></div>`}).join("")||'<div class="empty">No scopes.</div>'}</div>
- <div class="card"><div class="row" style="justify-content:space-between"><h3>DNS ${tip("dns")} ${S.ad.domain?`<span class="pill">${esc(S.ad.domain)}</span>`:""}</h3><button data-act="addDns">+ Record</button></div>
+ <div class="card" data-anchor="net-dns"><div class="row" style="justify-content:space-between"><h3>DNS ${tip("dns")} ${libBtn("dns")} ${S.ad.domain?`<span class="pill">${esc(S.ad.domain)}</span>`:""}</h3><button data-act="addDns">+ Record</button></div>
  ${S.dns.length?`<table><tr><th>Name</th><th>Type</th><th>Value</th><th></th></tr>${S.dns.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.type}</td><td>${esc(r.value)}</td><td><button class="sm" data-act="delDns" data-v="${r.id}">✕</button></td></tr>`).join("")}</table>`:'<div class="empty">No DNS zone yet — it is created with your AD domain.</div>'}</div>
- <div class="card"><div class="row" style="justify-content:space-between"><h3>Site-to-site VPN ${tip("vpn")}</h3><button data-act="addVpn">+ Tunnel</button></div>
+ <div class="card" data-anchor="net-vpn"><div class="row" style="justify-content:space-between"><h3>Site-to-site VPN ${tip("vpn")} ${libBtn("vpn")}</h3><button data-act="addVpn">+ Tunnel</button></div>
  ${S.vpn.map(t=>`<div class="ctl"><div><div class="nm">${esc(t.name)} <span class="pill ok">up</span></div><div class="ds">→ ${esc(t.peer)} · ${esc(t.type)} · ${esc(t.auth)}</div></div><button class="sm" data-act="delVpn" data-v="${t.id}">✕</button></div>`).join("")||'<div class="empty">No tunnels.</div>'}</div>
  </div>`}
 
-function vId(){const ad=S.ad;if(!ad.domain)return`<h2>Identity ${tip("ad")}</h2><p class="sub">Active Directory and Microsoft Entra ID.</p><div class="card"><h3>No domain yet ${tip("dc")}</h3>
+function vId(){const ad=S.ad;if(!ad.domain)return`<h2 data-anchor="id-main">Identity ${tip("ad")} ${libBtn("dns")}</h2><p class="sub">Active Directory and Microsoft Entra ID.</p><div class="card"><h3>No domain yet ${tip("dc")}</h3>
  <p>To build Active Directory you need a running VM with the <b>Domain Controller</b> role. ${dcOn()?'<span class="pill ok">DC VM ready</span>':'<span class="pill warn">no running DC VM</span>'}</p><button class="pri" data-act="createDomain">Create new forest / domain</button></div>`;
- return`<h2>Identity — ${esc(ad.domain)} ${tip("ad")}</h2><p class="sub">Domain controllers: ${S.vms.filter(v=>v.role.includes("Domain Controller")||v.role.includes("RODC")).map(v=>esc(v.name)+(v.power==="on"?"":" (off)")).join(", ")||"none!"}</p>
+ return`<h2 data-anchor="id-main">Identity — ${esc(ad.domain)} ${tip("ad")} ${libBtn("dns")}</h2><p class="sub">Domain controllers: ${S.vms.filter(v=>v.role.includes("Domain Controller")||v.role.includes("RODC")).map(v=>esc(v.name)+(v.power==="on"?"":" (off)")).join(", ")||"none!"}</p>
  <div class="grid g2">
  <div class="card"><div class="row" style="justify-content:space-between"><h3>Users ${tip("user")}</h3><div class="row"><button data-act="addUser">+ User</button><button data-act="bulkUsers">Import 5 users</button></div></div>
  ${ad.users.length?`<div class="tw"><table><tr><th>User</th><th>OU</th><th>Groups</th><th></th></tr>${ad.users.map(u=>`<tr><td>${esc(u.n)} ${u.admin?'<span class="pill warn">admin</span>':""}</td><td>${esc(u.ou)}</td><td>${u.groups.map(esc).join(", ")||"—"}</td><td><button class="sm" data-act="delUser" data-v="${esc(u.n)}">✕</button></td></tr>`).join("")}</table></div>`:'<div class="empty">No users.</div>'}</div>
@@ -545,13 +552,13 @@ function vId(){const ad=S.ad;if(!ad.domain)return`<h2>Identity ${tip("ad")}</h2>
  <div class="card"><div class="row" style="justify-content:space-between"><h3>Group Policy ${tip("gpo")}</h3><button data-act="addGPO">+ GPO</button></div>
  ${ad.gpos.map(g=>`<div class="ctl"><div><div class="nm">${esc(g.n)}</div><div class="ds">${esc(g.setting)} → OU=${esc(g.ou)}</div></div><button class="sm" data-act="delGPO" data-v="${g.id}">✕</button></div>`).join("")||'<div class="empty">No GPOs.</div>'}
  <div class="ds" style="font-size:12px;color:var(--mute);margin-top:6px">Settings: baseline ${tip("baseline")} LAPS ${tip("laps")}</div></div>
- <div class="card"><h3>Hybrid identity ${tip("entra")}</h3><div class="ctl"><div><div class="nm">Microsoft Entra Connect sync</div><div class="ds">Sync users & groups to Entra ID for Microsoft 365</div></div><label class="sw"><input type="checkbox" ${ad.entra?"checked":""} data-act="entra"><span></span></label></div>
+ <div class="card" data-anchor="id-entra"><h3>Hybrid identity ${tip("entra")} ${libBtn("entra")}</h3><div class="ctl"><div><div class="nm">Microsoft Entra Connect sync</div><div class="ds">Sync users & groups to Entra ID for Microsoft 365</div></div><label class="sw"><input type="checkbox" ${ad.entra?"checked":""} data-act="entra"><span></span></label></div>
  <div class="ctl"><div><div class="nm">MFA ${tip("mfa")}</div><div class="ds">Managed on the Security page</div></div>${S.sec.mfa?'<span class="pill ok">enforced</span>':'<span class="pill bad">off</span>'}</div></div>
  </div>`}
 
 function vSec(){const ctl=(k,n,d)=>`<div class="ctl"><div><div class="nm">${n} ${tip(k)}</div><div class="ds">${d}</div></div><label class="sw"><input type="checkbox" ${S.sec[k]?"checked":""} data-act="sec" data-v="${k}"><span></span></label></div>`;
  return`<h2>Security & Backup ${tip("posture")}</h2><p class="sub">Defensive controls and data protection. Posture score: <b>${posture().score}%</b></p><div class="grid g2">
- <div class="card"><h3>Security controls</h3>
+ <div class="card" data-anchor="sec-controls"><h3>Security controls ${libBtn("mfa")}</h3>
  ${ctl("mfa","Multi-factor authentication","Conditional Access policy for all users")}
  ${ctl("edr","Endpoint Detection & Response","Agent on every VM and workstation")}
  ${ctl("patch","Patch management",S.platform==="vmware"?"vSphere Lifecycle Manager + Azure Update Manager":"Azure Update Manager / Intune / Cluster-Aware Updating")}
@@ -573,7 +580,7 @@ function vScn(){const st=scnState();
   ${st.done===st.res.length?`<p style="margin-top:12px"><span class="pill ok">Scenario complete in ${el} min</span> Pick another challenge below, or keep building on this environment.</p>`:""}</div>`}
  return`<h2>Build scenarios ${tip("scenario")}</h2><p class="sub">Real-world IT projects with live-checked objectives. Starting a scenario keeps your current lab — use Reset or the sample environment for a clean start.</p>${cur}
  <div class="grid g2">${SCN.map(s=>`<div class="card"><h3>${esc(s.title)} <span class="pill ${s.lvl==="Beginner"?"ok":s.lvl==="Advanced"?"bad":"warn"}">${s.lvl}</span></h3><p style="margin:0 0 8px">${esc(s.desc)}</p>
- <div style="font-size:12px;color:var(--mute);margin-bottom:10px">${s.obj.length} objectives</div><button class="${S.scenario&&S.scenario.id===s.id?"":"pri"}" data-act="startScn" data-v="${s.id}">${S.scenario&&S.scenario.id===s.id?"Restart":"Start"}</button></div>`).join("")}</div>`}
+ <div style="font-size:12px;color:var(--mute);margin-bottom:6px">${s.obj.length} objectives</div>${(SCN_STUDY[s.id]||[]).length?`<div class="row" style="margin-bottom:10px;font-size:12px"><span style="color:var(--mute)">📚 Study first:</span>${SCN_STUDY[s.id].map(id=>`<button class="sm" data-act="libOpen" data-v="${id}">${esc(LIB.find(g=>g.id===id).t)}</button>`).join("")}</div>`:""}<button class="${S.scenario&&S.scenario.id===s.id?"":"pri"}" data-act="startScn" data-v="${s.id}">${S.scenario&&S.scenario.id===s.id?"Restart":"Start"}</button></div>`).join("")}</div>`}
 
 /* ===================== MODALS ===================== */
 function closeModal(){document.getElementById("modalRoot").innerHTML=""}
@@ -610,13 +617,108 @@ document.addEventListener("click",e=>{
 /* tooltip */
 const tipEl=document.getElementById("tip");let pinned=false;
 function showTip(el,pin){const g=G[el.dataset.tip];if(!g)return;pinned=!!pin;
- tipEl.innerHTML=`<h4>${esc(g.t)}</h4><p>${esc(g.d)}</p><div class="k">How to</div><p>${esc(g.h)}</p>${g.a?`<div class="k">Alternatives</div><p>${esc(g.a)}</p>`:""}${pin?'<p style="font-size:11px;color:var(--mute);margin-top:8px">Tap anywhere to close</p>':""}`;
+ tipEl.innerHTML=`<h4>${esc(g.t)}</h4><p>${esc(g.d)}</p><div class="k">How to</div><p>${esc(g.h)}</p>${g.a?`<div class="k">Alternatives</div><p>${esc(g.a)}</p>`:""}${libTipHTML(el.dataset.tip,pin)}${pin?'<p style="font-size:11px;color:var(--mute);margin-top:8px">Tap anywhere to close</p>':""}`;
  tipEl.style.display="block";const r=el.getBoundingClientRect(),tw=tipEl.offsetWidth,th=tipEl.offsetHeight;
  let x=Math.min(Math.max(8,r.left+r.width/2-tw/2),innerWidth-tw-8),y=r.bottom+8;if(y+th>innerHeight-8)y=Math.max(8,r.top-th-8);
  tipEl.style.left=x+"px";tipEl.style.top=y+"px"}
 document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el&&!pinned)showTip(el,false)});
 document.addEventListener("mouseout",e=>{const el=e.target.closest("[data-tip]");if(el&&!pinned&&!el.contains(e.relatedTarget))tipEl.style.display="none"});
 document.addEventListener("pointerdown",e=>{if(pinned&&!e.target.closest(".tip-ic")&&!e.target.closest("#tip")){pinned=false;tipEl.style.display="none"}},true);
+/* ===================== LEARNING LIBRARY ===================== */
+/* Guides from natted.cloud/learn. Summaries are written for this simulator; each links to the full guide.
+   [id, title, category, summary, related glossary keys, url slug if different from id] */
+const LIB_SRC="https://natted.cloud/learn/";
+const LIB=[
+["subnetting","What is Subnetting?","Fundamentals","Carve an IP range into smaller networks and read CIDR masks like /24.",["subnet","vlan"]],
+["dns","What is DNS?","Fundamentals","How names become IP addresses: records, TTLs and resolvers.",["dns","ad","dc"]],
+["dhcp","What is DHCP?","Fundamentals","How clients lease an address automatically in four steps (Discover, Offer, Request, Acknowledge).",["dhcp"]],
+["nat","What is NAT?","Fundamentals","Sharing one public address across many private devices, plus port forwarding.",["firewall"]],
+["vlan","What is a VLAN?","Fundamentals","Splitting one physical switch into isolated logical networks with tags and trunk ports.",["vlan","vswitch","san"]],
+["firewall","What is a Firewall?","Fundamentals","Allow/deny rules, why rule order matters, and stateful vs. stateless filtering.",["firewall","defaultdeny"]],
+["osi-model","The OSI Model (7 Layers)","Fundamentals","A layer-by-layer map of how data moves, handy for pinpointing where a problem lives.",["failure"]],
+["tcp-vs-udp","TCP vs UDP","Fundamentals","Reliable vs. fast transport, and which applications use each.",["firewall"]],
+["ipv4-vs-ipv6","IPv4 vs IPv6","Fundamentals","Why IPv4 addresses ran short and how IPv6 addressing works.",["subnet"]],
+["mac-address","What is a MAC Address?","Fundamentals","Hardware addresses, and unicast, multicast and broadcast frames.",["vswitch"]],
+["default-gateway","What is a Default Gateway?","Fundamentals","How a device decides whether traffic stays local or goes to the router.",["subnet"]],
+["private-vs-public-ip","Private vs Public IP","Fundamentals","Private ranges such as 10.0.0.0/8, carrier-grade NAT and self-assigned addresses.",["subnet"]],
+["ports-and-sockets","Ports & Sockets","Fundamentals","How one server runs many services, and the well-known ports you'll write firewall rules for.",["firewall"]],
+["ospf-vs-bgp","OSPF vs BGP","Routing & Protocols","Routing inside your network vs. routing across the internet, and when each fits.",["vpn"]],
+["mpls-explained","What is MPLS?","Routing & Protocols","Label switching: how carriers forward traffic with push, swap and pop.",["vpn"]],
+["static-routing","Static Routing Explained","Routing & Protocols","Hand-built routes, default routes and longest-prefix match.",["vpn","subnet"]],
+["bgp-deep-dive","BGP Deep Dive","Routing & Protocols","Autonomous systems, peering, path selection and multi-homed internet links.",[]],
+["ospf-deep-dive","OSPF Deep Dive","Routing & Protocols","Areas, link costs, shortest-path calculation and convergence.",[]],
+["mpls-vpn","MPLS VPN (L3VPN)","Routing & Protocols","How carriers link branch offices privately using VRFs and route targets.",["vpn"],"mpls-explained"],
+["three-way-handshake","TCP Three-Way Handshake","Routing & Protocols","SYN, SYN-ACK, ACK: how every TCP connection gets set up.",[]],
+["qos","Quality of Service (QoS)","Routing & Protocols","Prioritizing voice and critical traffic when links get congested.",["vswitch"]],
+["acl","Router ACLs Explained","Security","Filtering traffic per interface on routers and layer-3 switches.",["firewall","defaultdeny"]],
+["zero-trust","Zero Trust Networking","Security","Verify every connection: microsegmentation and least-privilege access.",["defaultdeny","mfa","pam","edr","firewall","posture"]],
+["vpn-ipsec","VPN & IPsec Basics","Security","Tunnels, IPsec phases, and site-to-site vs. remote-access VPNs.",["vpn","rodc"]],
+["tls-handshake","How the TLS Handshake Works","Security","How HTTPS proves a site's identity and agrees on encryption keys.",["entra"]],
+["proxy-server","Forward vs Reverse Proxy","Security","Proxies that protect users vs. proxies that protect servers.",["firewall"]],
+["network-troubleshooting","Network Troubleshooting Guide","Troubleshooting","A repeatable five-step method that starts at the physical layer.",["failure"]],
+["ping-works-but-cant-browse","Ping Works But Can't Browse?","Troubleshooting","A diagnostic flow for when connectivity looks fine but web traffic fails (often DNS).",["dns"]],
+["mtu-issues","MTU & Path MTU Issues","Troubleshooting","Why large transfers stall while ping works, and how to fix MTU black holes (think iSCSI jumbo frames and VPN tunnels).",["san","nas","vpn"]],
+["routing-loops","Routing Loops Explained","Troubleshooting","Packets going in circles, how TTL stops them, and spotting loops in traceroute.",[]],
+["asymmetric-routing","Asymmetric Routing Problems","Troubleshooting","When return traffic takes another path and a stateful firewall drops it.",["firewall","vpn"]],
+["traceroute","How Traceroute Works","Troubleshooting","Using TTL to reveal each hop on the path, and how to read timeouts.",[]],
+["load-balancing","Load Balancing Explained","Cloud & Modern Networking","Spreading work across servers with health checks and virtual IPs, the same idea as DRS at the VM level.",["drs","ha","cluster"]],
+["kubernetes-networking","Kubernetes Networking","Cloud & Modern Networking","How pods and services talk: ClusterIP, NodePort, Ingress and CNI plugins.",["vm","hypervisor"]],
+["docker-networking","Docker Networking","Cloud & Modern Networking","Bridge, host and overlay networks for containers, a lighter-weight alternative to VMs.",["vm","vswitch"]],
+["aws-vpc","AWS VPC Networking","Cloud & Modern Networking","Cloud subnets, security groups, network ACLs, route tables and NAT gateways: the cloud version of this lab's Network page.",["vlan","firewall"]],
+["cdn","How CDNs Work","Cloud & Modern Networking","Caching content at the edge, close to users.",[]],
+["anycast","Anycast Explained","Cloud & Modern Networking","One IP address answered from many locations, as DNS root servers do.",["dns"]],
+["sdn","What is SDN?","Cloud & Modern Networking","Separating the control plane from the data plane, the idea behind VMware NSX and Hyper-V SDN.",["vswitch","vlan"]],
+["sd-wan","What is SD-WAN?","Cloud & Modern Networking","Choosing the best path per application across MPLS, broadband and LTE, with automatic failover.",["vpn"]],
+["how-switches-work","How Switches Work","Switching & Layer 2","MAC tables, broadcast domains and how a switch forwards each frame. Virtual switches work the same way.",["vswitch","vlan"]],
+["stp","Spanning Tree Protocol","Switching & Layer 2","Preventing broadcast storms when switches have redundant links.",["vswitch"]],
+["arp","ARP: Finding MAC Addresses","Switching & Layer 2","How a device finds the hardware address behind an IP on the local network.",["subnet"]],
+["network-topologies","Network Topologies","Switching & Layer 2","Star, bus, ring and mesh designs, and what happens when a link fails.",["host","ha"]],
+["vxlan","VXLAN & Overlay Networks","Switching & Layer 2","Stretching layer 2 across layer 3 with encapsulation, the basis of NSX and SDN overlays.",["vlan","vswitch"]],
+["multicast-broadcast-unicast","Unicast vs Broadcast vs Multicast","Switching & Layer 2","The three delivery modes compared side by side.",[]],
+["home-network","Your Home Network Explained","Real-World Scenarios","Router, NAT, DHCP and DNS working together when you join Wi-Fi.",["dhcp","dns"]],
+["port-forwarding","Port Forwarding for Gaming","Real-World Scenarios","Exposing a service from home with DNAT, dynamic DNS and firewall rules.",["firewall"]],
+["office-network","Designing an Office Network","Real-World Scenarios","Design decisions for networks from a small startup up to an enterprise.",["vlan","subnet","vpn","firewall"]],
+["network-redundancy","Network Redundancy","Real-World Scenarios","Dual uplinks, failover and high availability, the network side of an HA cluster.",["ha","cluster","vswitch"],"office-network"]
+].map(([id,t,cat,sum,keys,url])=>({id,t,cat,sum,keys,url:LIB_SRC+(url||id)}));
+const LIB_CATS=["All",...new Set(LIB.map(g=>g.cat))];
+/* where each glossary topic lives in the simulator: [tab, anchor, label] */
+const LIB_ANCHOR={subnet:["net","net-vlan","Network → VLANs & subnets"],vlan:["net","net-vlan","Network → VLANs & subnets"],vswitch:["net","net-switch","Network → Virtual switches"],
+ firewall:["net","net-fw","Network → Firewall rules"],defaultdeny:["net","net-fw","Network → Firewall rules"],dhcp:["net","net-dhcp","Network → DHCP scopes"],dns:["net","net-dns","Network → DNS"],
+ vpn:["net","net-vpn","Network → Site-to-site VPN"],host:["dc","dc-hosts","Datacenter → Hosts"],failure:["dc","dc-hosts","Datacenter → Host failure test"],hypervisor:["dc","dc-hosts","Datacenter → Hosts"],
+ cluster:["dc","dc-clusters","Datacenter → Clusters"],ha:["dc","dc-clusters","Datacenter → Clusters (HA)"],drs:["dc","dc-clusters","Datacenter → Clusters (load balancing)"],
+ san:["dc","dc-storage","Datacenter → Storage"],nas:["dc","dc-storage","Datacenter → Storage"],vm:["virt","virt-vms","Virtualization → VMs"],
+ ad:["id","id-main","Identity"],dc:["id","id-main","Identity"],rodc:["virt","virt-vms","Virtualization → New VM (RODC)"],entra:["id","id-entra","Identity → Hybrid identity"],
+ mfa:["sec","sec-controls","Security → Controls"],pam:["sec","sec-controls","Security → Controls"],edr:["sec","sec-controls","Security → Controls"],posture:["dash","dash-posture","Dashboard → Security posture"]};
+const SCN_STUDY={s1:["subnetting","vlan","dhcp","dns"],s2:["load-balancing","network-redundancy","network-topologies"],s3:["dns","zero-trust","tls-handshake"],
+ s4:["vpn-ipsec","sd-wan","firewall","office-network"],s5:["network-redundancy","network-topologies"],s6:["zero-trust","firewall","acl"]};
+const libFor=k=>LIB.filter(g=>g.keys.includes(k));
+const libBtn=k=>libFor(k).length?`<button class="sm libbtn" data-act="libTopic" data-v="${k}" data-tip="library" aria-label="Related guides">📚 ${libFor(k).length}</button>`:"";
+const anchorsFor=g=>{const seen=new Set();return g.keys.map(k=>LIB_ANCHOR[k]).filter(a=>a&&!seen.has(a[1]+a[2])&&seen.add(a[1]+a[2]))};
+function libMatches(){const q=(S.libQ||"").toLowerCase().trim(),cat=S.libCat||"All",key=S.libKey||"";
+ return LIB.filter(g=>(cat==="All"||g.cat===cat)&&(!key||g.keys.includes(key))&&(!q||(g.t+" "+g.sum+" "+g.cat).toLowerCase().includes(q)))}
+function libCard(g){return`<div class="card libcard ${S.libFocus===g.id?"flash":""}" data-anchor="lib-${g.id}"><div class="row" style="justify-content:space-between;align-items:flex-start"><h3 style="margin:0">${esc(g.t)}</h3><span class="pill">${esc(g.cat)}</span></div>
+ <p style="margin:8px 0 10px;color:var(--mute)">${esc(g.sum)}</p>
+ ${anchorsFor(g).length?`<div style="font-size:12px;color:var(--mute);margin-bottom:4px">Try it in the simulator</div><div class="row" style="margin-bottom:10px">${anchorsFor(g).map(a=>`<button class="sm" data-act="goto" data-v="${a[0]}|${a[1]}">${esc(a[2])} →</button>`).join("")}</div>`:`<div style="font-size:12px;color:var(--mute);margin-bottom:10px">Background reading: not modeled in this simulator.</div>`}
+ <a class="libread" href="${g.url}" target="_blank" rel="noopener">Read the guide on natted.cloud ↗</a></div>`}
+function libList(){const m=libMatches();return m.length?LIB_CATS.filter(c=>c!=="All").map(c=>{const gs=m.filter(g=>g.cat===c);return gs.length?`<h3 style="margin:18px 0 8px">${esc(c)} <span class="pill">${gs.length}</span></h3><div class="grid g2">${gs.map(libCard).join("")}</div>`:""}).join(""):'<div class="card empty">No guides match. Clear the search or filters.</div>'}
+function vLearn(){const k=S.libKey,kg=k&&G[k];return`<h2>Learning Library ${tip("library")}</h2><p class="sub">${LIB.length} networking guides from <a href="https://natted.cloud/learn" target="_blank" rel="noopener" style="color:var(--acc)">natted.cloud/learn</a>, each linked to the parts of the simulator where you can practice it. Look for 📚 buttons and the "Learn more" section in pinned tips to jump back here.</p>
+ <div class="card" style="margin-bottom:6px"><input id="libQ" type="search" placeholder="Search guides (e.g. VLAN, DNS, failover)…" value="${esc(S.libQ||"")}">
+ <div class="row" style="margin-top:10px">${LIB_CATS.map(c=>`<button class="sm ${(S.libCat||"All")===c?"pri":""}" data-act="libCat" data-v="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+ ${k?`<div class="row" style="margin-top:10px"><span class="pill acc">Topic: ${esc(kg?kg.t:k)}</span>${LIB_ANCHOR[k]?`<button class="sm" data-act="goto" data-v="${LIB_ANCHOR[k][0]}|${LIB_ANCHOR[k][1]}">← Back to ${esc(LIB_ANCHOR[k][2])}</button>`:""}<button class="sm" data-act="libKeyClear">Show all topics</button></div>`:""}</div>
+ <div id="libList">${libList()}</div>
+ <p style="font-size:12px;color:var(--mute);margin-top:16px">Guide titles and links: natted.cloud. Summaries and simulator links written for IT Lab Simulator.</p>`}
+function libTipHTML(key,pinned){const gs=libFor(key);if(!gs.length)return"";
+ if(!pinned)return`<p style="font-size:11px;color:var(--mute);margin-top:8px">📚 ${gs.length} related guide${gs.length>1?"s":""}. Click the ? to pin this tip and open them.</p>`;
+ return`<div class="k">Learn more</div><div class="row" style="margin-top:4px">${gs.slice(0,4).map(g=>`<button class="sm" data-act="libOpen" data-v="${g.id}">${esc(g.t)}</button>`).join("")}${gs.length>4?`<button class="sm" data-act="libTopic" data-v="${key}">All ${gs.length} →</button>`:""}</div>`}
+function hideTip(){pinned=false;tipEl.style.display="none"}
+Object.assign(A,{
+ libOpen(id){S.tab="learn";S.libQ="";S.libCat="All";S.libKey="";S.libFocus=id;S.flash="lib-"+id;hideTip()},
+ libTopic(k){S.tab="learn";S.libQ="";S.libCat="All";S.libKey=k;S.libFocus=null;hideTip()},
+ libCat(c){S.libCat=c},libKeyClear(){S.libKey=""},
+ goto(v){const[t,a]=String(v).split("|");S.tab=t;S.flash=a;hideTip()}});
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="libQ"){S.libQ=e.target.value;const l=document.getElementById("libList");if(l)l.innerHTML=libList()}});
+function postRender(){if(!S.flash)return;const sel=S.flash;S.flash=null;setTimeout(()=>{const el=document.querySelector(`[data-anchor="${sel}"]`);if(!el)return;
+ if(el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"center"});el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash")},30)}
 if(!S.log.length)log("Welcome. Load the sample environment or start from Datacenter → Add host. Hover (or tap) any ? for help.");
 if(innerWidth<760)document.getElementById("log").classList.add("min");
 render();

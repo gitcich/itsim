@@ -2,7 +2,7 @@
  "name": "it-lab-sims-tests",
  "private": true,
  "scripts": {
-  "test": "node itlab-smoke.test.js && node itlab-ha-scenario.test.js && node rmmlab-scenarios.test.js && node rmmlab-ai.test.js"
+  "test": "node itlab-smoke.test.js && node itlab-ha-scenario.test.js && node rmmlab-scenarios.test.js && node rmmlab-ai.test.js && node itlab-library.test.js"
  },
  "devDependencies": {
   "jsdom": "^24.0.0"
