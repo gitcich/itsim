@@ -188,6 +188,7 @@ restore:{t:"Restore test",d:"Actually recovering a VM from backup to prove it wo
 rpo:{t:"RPO / RTO",d:"Recovery Point Objective = how much data you can afford to lose (time between backups). Recovery Time Objective = how long you can be down.",h:"Agree on these with the business per application, then design backup frequency and DR to meet them.",a:"DR orchestration: Azure Site Recovery, VMware Live Recovery (SRM), Zerto."},
 scenario:{t:"Build scenarios",d:"Guided challenges with objectives checked live against your lab. Each mirrors a real IT project.",h:"Start a scenario; the checklist updates as you build. Hints point to the right page.",a:"Real labs: Microsoft Learn sandboxes, VMware Hands-on Labs, a home lab on Proxmox or Hyper-V."},
 library:{t:"Learning Library",d:"50 networking guides from natted.cloud/learn, each with a short summary and links to the simulator pages where you can practice the topic.",h:"Open Learning Library in the menu, search or filter by category, then use \"Try it in the simulator\" to jump to the right card. On any page, tap a 📚 button or pin a ? tip to see related guides.",a:"Other free learning: Microsoft Learn, VMware Hands-on Labs, Cisco Networking Academy, Professor Messer (CompTIA Network+), Practical Networking."},
+diagram:{t:"Network diagram",d:"A live drawing of your lab: internet uplink, edge firewall, switches, VLANs and subnets, clusters, hosts, VMs, storage and remote sites, with an ID on every device and simulator-assigned IP addresses.",h:"Open Network Diagram in the menu. Toggle VMs, IPs and storage links, zoom, and click any device to jump to it. Export as SVG or PNG for documentation, or the inventory as CSV.",a:"Real-world diagramming and discovery: Microsoft Visio, draw.io (diagrams.net), Lucidchart, NetBox (source of truth + topology), SolarWinds/Auvik network mapping, and RMM network discovery tools."},
 posture:{t:"Security posture score",d:"A rough measure of how many core defensive controls are in place across identity, endpoints, network and backups.",h:"Enable controls on the Security page and build the supporting pieces they require.",a:"Microsoft Secure Score, CIS Controls self-assessment, cyber-insurance questionnaires."}
 };
 
@@ -468,12 +469,12 @@ const SCN=[
 function scnState(){if(!S.scenario)return null;const s=SCN.find(x=>x.id===S.scenario.id);const res=s.obj.map(o=>o[1]());return{s,res,done:res.filter(Boolean).length}}
 
 /* ===================== RENDER ===================== */
-const TABS=[["dash","Dashboard"],["dc","Datacenter"],["virt","Virtualization"],["net","Network"],["id","Identity"],["sec","Security & Backup"],["scn","Scenarios"],["learn","Learning Library"]];
+const TABS=[["dash","Dashboard"],["dc","Datacenter"],["virt","Virtualization"],["net","Network"],["diagram","Network Diagram"],["id","Identity"],["sec","Security & Backup"],["scn","Scenarios"],["learn","Learning Library"]];
 function render(){
  document.body.classList.toggle("ms",S.platform==="microsoft");
  document.querySelectorAll("#platSeg button").forEach(b=>b.classList.toggle("on",b.dataset.v===S.platform));
  document.getElementById("nav").innerHTML=TABS.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${S.tab===k?"on":""}">${l}${k==="scn"&&S.scenario?' <span class="pill acc">live</span>':""}</button>`).join("");
- const V={dash:vDash,dc:vDC,virt:vVirt,net:vNet,id:vId,sec:vSec,scn:vScn,learn:vLearn}[S.tab]||vDash;
+ const V={dash:vDash,dc:vDC,virt:vVirt,net:vNet,id:vId,sec:vSec,scn:vScn,learn:vLearn,diagram:vDiagram}[S.tab]||vDash;
  document.getElementById("main").innerHTML=`<div class="banner">Training simulation — no real systems are touched. Console: <b>${T("console")}</b> · Management: <b>${T("mgr")}</b> ${tip("mgr")}</div>`+scnBar()+V();
  document.getElementById("logbd").innerHTML=S.log.map(l=>`<div class="lg-${l.lvl}">[${l.t}] ${esc(l.msg)}</div>`).join("")||'<div class="lg-info">No events yet.</div>';
  document.getElementById("logcount").textContent=S.log.length+" events ▾";
@@ -491,7 +492,7 @@ function vDash(){const p=posture();const on=S.vms.filter(v=>v.power==="on").leng
  return`<h2>Dashboard</h2><p class="sub">Your company's IT estate at a glance.</p>
  <div class="grid g4" style="margin-bottom:12px">${stat(S.hosts.length,"Physical hosts","host")}${stat(`${on}/${S.vms.length}`,"VMs running","vm")}${stat(S.vlans.length,"VLANs","vlan")}${stat(S.ad.users.length,"AD users","user")}${stat(p.score+"%","Security posture","posture")}</div>
  <div class="grid g2">
- <div class="card"><h3>Topology ${tip("cluster")}</h3>${S.hosts.length?`<div class="topo">${S.clusters.map(c=>`<div class="clu"><div class="t">${esc(c.name)} ${c.ha?'<span class="pill ok">HA</span>':""}${c.drs?'<span class="pill acc">LB</span>':""}</div>${S.hosts.filter(h=>h.clusterId===c.id).map(hostBox).join("")||'<div class="empty">No members</div>'}</div>`).join("")}${unclustered.length?`<div class="clu" style="border-color:var(--line)"><div class="t" style="color:var(--mute)">Standalone hosts</div>${unclustered.map(hostBox).join("")}</div>`:""}</div>`:'<div class="empty">No hosts yet. Go to Datacenter or click "Load sample environment".</div>'}</div>
+ <div class="card"><h3>Topology ${tip("cluster")} <button class="sm" data-act="tab" data-v="diagram" style="margin-left:auto">Network diagram →</button></h3>${S.hosts.length?`<div class="topo">${S.clusters.map(c=>`<div class="clu"><div class="t">${esc(c.name)} ${c.ha?'<span class="pill ok">HA</span>':""}${c.drs?'<span class="pill acc">LB</span>':""}</div>${S.hosts.filter(h=>h.clusterId===c.id).map(hostBox).join("")||'<div class="empty">No members</div>'}</div>`).join("")}${unclustered.length?`<div class="clu" style="border-color:var(--line)"><div class="t" style="color:var(--mute)">Standalone hosts</div>${unclustered.map(hostBox).join("")}</div>`:""}</div>`:'<div class="empty">No hosts yet. Go to Datacenter or click "Load sample environment".</div>'}</div>
  <div class="card" data-anchor="dash-posture"><h3>Security posture ${tip("posture")} ${libBtn("posture")}</h3><div class="score">${p.score}%</div>${bar(p.score)}<table style="margin-top:10px">${p.checks.map(c=>`<tr><td>${c[0]}</td><td>${c[1]?'<span class="pill ok">in place</span>':'<span class="pill bad">gap</span>'}</td></tr>`).join("")}</table></div>
  </div>`}
 function hostBox(h){const u=hostUse(h);return`<div class="hostbox ${h.status}"><div class="row" style="justify-content:space-between"><b style="font-size:12px">${esc(h.name)}</b>${statusPill(h.status)}</div>
@@ -719,6 +720,109 @@ Object.assign(A,{
 document.addEventListener("input",e=>{if(e.target&&e.target.id==="libQ"){S.libQ=e.target.value;const l=document.getElementById("libList");if(l)l.innerHTML=libList()}});
 function postRender(){if(!S.flash)return;const sel=S.flash;S.flash=null;setTimeout(()=>{const el=document.querySelector(`[data-anchor="${sel}"]`);if(!el)return;
  if(el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"center"});el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash")},30)}
+/* ===================== NETWORK DIAGRAM ===================== */
+const DGM_PAL=["#1d9bd1","#3fb950","#d29922","#a371f7","#f778ba","#2fb39a","#ff7b72","#79c0ff"];
+const idNum=id=>parseInt(String(id).replace(/\D/g,""),10)||0;
+const did=(p,id)=>`${p}-${String(idNum(id)).padStart(3,"0")}`;
+const dgmOpts=()=>Object.assign({vms:true,ips:true,storage:true,zoom:1},S.dgm||{});
+const vlanColor=id=>{const i=S.vlans.findIndex(v=>v.id===id);return i<0?"#6e7681":DGM_PAL[i%DGM_PAL.length]};
+const subnetBase=v=>v.subnet.split("/")[0].split(".").slice(0,3).join(".");
+function dgmIPs(){const ip={};const byNum=(a,b)=>idNum(a.id)-idNum(b.id);
+ S.vlans.forEach(v=>S.vms.filter(m=>m.vlanId===v.id).sort(byNum).forEach((m,i)=>ip[m.id]=`${subnetBase(v)}.${10+i}`));
+ const mg=S.vlans.find(v=>/mgmt|manage/i.test(v.name));if(mg)[...S.hosts].sort(byNum).forEach((h,i)=>ip[h.id]=`${subnetBase(mg)}.${i<8?2+i:200+i}`);
+ const sv=S.vlans.find(v=>/stor|iscsi|san/i.test(v.name));if(sv)[...S.storage].filter(s=>s.type!=="local").sort(byNum).forEach((s,i)=>ip[s.id]=`${subnetBase(sv)}.${240+i}`);
+ return ip}
+const swList=()=>S.switches.length?S.switches:[{id:"core",name:"Core switch",type:"Physical switch (implied)",uplinks:0,vlanIds:S.vlans.map(v=>v.id),implied:true}];
+const swId=s=>s.implied?"SW-CORE":did("SW",s.id);
+function dgmSites(){const peers=S.vpn.map(t=>({t,name:t.peer,vlans:S.vlans.filter(v=>v.site&&v.site!=="HQ"&&(t.peer.toLowerCase().includes(v.site.toLowerCase())||v.site.toLowerCase().includes(t.peer.toLowerCase())))}));
+ const matched=new Set(peers.flatMap(p=>p.vlans.map(v=>v.id)));const orphan=[...new Set(S.vlans.filter(v=>v.site&&v.site!=="HQ"&&!matched.has(v.id)).map(v=>v.site))].map(n=>({t:null,name:n,vlans:S.vlans.filter(v=>v.site===n)}));
+ return peers.concat(orphan)}
+function dgmBuild(){const o=dgmOpts(),ip=dgmIPs(),E=esc;const L=[],N=[];
+ const groups=[...S.clusters.map(c=>({c,hosts:S.hosts.filter(h=>h.clusterId===c.id)})).filter(g=>g.hosts.length)];if(S.hosts.some(h=>!h.clusterId))groups.push({c:null,hosts:S.hosts.filter(h=>!h.clusterId)});
+ const HW=230,HG=18,GP=14,vmsOn=h=>S.vms.filter(v=>v.hostId===h.id),hostH=h=>66+(o.vms?vmsOn(h).length*19:0);
+ let x=40;const hp={};groups.forEach(g=>{g.x=x;x+=GP;g.hosts.forEach(h=>{hp[h.id]={x,w:HW,h:hostH(h)};x+=HW+HG});x+=GP-HG;g.w=x-g.x;x+=26});
+ const mainW=Math.max(x+14,760),cx=mainW/2;const sites=dgmSites(),SW=250,W=mainW+(sites.length?SW+60:0);
+ // VLAN legend layout
+ const pills=[];let px=40,py=0;S.vlans.forEach(v=>{const txt=`VLAN ${v.vlan} · ${v.name} · ${v.subnet} · GW .1${S.dhcp.some(d=>d.vlanId===v.id)?" · DHCP":""}${v.site&&v.site!=="HQ"?" · "+v.site:""}`;const w=txt.length*6.3+26;if(px+w>mainW-40&&px>40){px=40;py++}pills.push({v,txt,x:px,row:py,w});px+=w+10});
+ const vlanY=322,vlanRows=S.vlans.length?py+1:0,hostsTop=vlanY+vlanRows*30+(S.vlans.length?44:10),maxH=Math.max(0,...S.hosts.map(h=>hp[h.id].h));
+ const showSt=o.storage&&S.storage.length,stTop=hostsTop+maxH+80;let H=(showSt?stTop+84:hostsTop+maxH+40);H=Math.max(H,120+sites.length*118+40,vlanY+60);
+ // internet + firewall
+ const fwY=118,swY=220,fwW=250,fwX=cx-fwW/2;const dd=S.fw.some(r=>r.action==="Deny"&&r.src==="any"&&r.dst==="any");
+ L.push(`<line x1="${cx}" y1="78" x2="${cx}" y2="${fwY}" stroke="#8b98a7" stroke-width="2"/>`);
+ N.push(`<g data-act="goto" data-v="net|net-fw" style="cursor:pointer"><title>Internet uplink → edge firewall</title><ellipse cx="${cx}" cy="52" rx="90" ry="27" fill="#1e2731" stroke="#8b98a7"/><text x="${cx}" y="49" text-anchor="middle" fill="#dbe3ec" font-size="13" font-weight="600">Internet</text><text x="${cx}" y="65" text-anchor="middle" fill="#8b98a7" font-size="10">ISP-001 · public uplink</text></g>`);
+ N.push(`<g data-act="goto" data-v="net|net-fw" style="cursor:pointer"><title>Edge firewall: ${S.fw.length} rule(s). Click to open firewall rules.</title><rect x="${fwX}" y="${fwY}" width="${fwW}" height="58" rx="8" fill="#2a1d14" stroke="#d29922" stroke-width="1.5"/><text x="${cx}" y="${fwY+21}" text-anchor="middle" fill="#f0c86a" font-size="12" font-weight="700">FW-001 · Edge firewall / router</text><text x="${cx}" y="${fwY+38}" text-anchor="middle" fill="#dbe3ec" font-size="11">${S.fw.length} rule(s) · default deny ${dd?"✓":"✗"}${S.vpn.length?` · ${S.vpn.length} VPN`:""}</text><text x="${cx}" y="${fwY+52}" text-anchor="middle" fill="#8b98a7" font-size="10">Gateway .1 on each VLAN</text></g>`);
+ // switches
+ const sws=swList(),swSub=s=>`${s.type}${s.implied?"":` · ${s.uplinks} uplink(s)`} · ${s.vlanIds.length} VLAN(s)`,sW=Math.max(220,...sws.map(s=>Math.max(swSub(s).length*5.7,(swId(s)+" · "+s.name).length*7.4)+28)),sGap=20,sTot=sws.length*sW+(sws.length-1)*sGap;let sx=cx-sTot/2;const sPos={};
+ sws.forEach(s=>{sPos[s.id]=sx+sW/2;L.push(`<line x1="${cx}" y1="${fwY+58}" x2="${sx+sW/2}" y2="${swY}" stroke="#8b98a7" stroke-width="2"/>`);
+  N.push(`<g data-act="goto" data-v="net|net-switch" style="cursor:pointer"><title>${E(s.type)}: carries ${s.vlanIds.length} VLAN(s)</title><rect x="${sx}" y="${swY}" width="${sW}" height="52" rx="8" fill="#13283a" stroke="#1d9bd1" stroke-width="1.5"/><text x="${sx+sW/2}" y="${swY+20}" text-anchor="middle" fill="#8fd0f5" font-size="12" font-weight="700">${swId(s)} · ${E(s.name)}</text><text x="${sx+sW/2}" y="${swY+37}" text-anchor="middle" fill="#8b98a7" font-size="10">${E(swSub(s))}</text></g>`);sx+=sW+sGap});
+ // VLAN legend
+ if(S.vlans.length)N.push(`<text x="40" y="${vlanY-10}" fill="#8b98a7" font-size="11" letter-spacing=".5">VLANS / SUBNETS (trunked to every host)</text>`);
+ pills.forEach(p=>{const c=vlanColor(p.v.id),y=vlanY+p.row*30;N.push(`<g data-act="goto" data-v="net|net-vlan" style="cursor:pointer"><title>${E(p.txt)}</title><rect x="${p.x}" y="${y}" width="${p.w}" height="22" rx="11" fill="#0f1419"/><rect x="${p.x}" y="${y}" width="${p.w}" height="22" rx="11" fill="${c}" fill-opacity=".18" stroke="${c}"/><circle cx="${p.x+12}" cy="${y+11}" r="4" fill="${c}"/><text x="${p.x+21}" y="${y+15}" fill="#dbe3ec" font-size="11">${E(p.txt)}</text></g>`)});
+ // clusters + hosts
+ groups.forEach(g=>{if(g.c){const c=g.c;N.push(`<g data-act="goto" data-v="dc|dc-clusters" style="cursor:pointer"><title>${E(c.name)}${c.ha?" · HA on":" · HA off"}${c.drs?" · load balancing on":""}</title><rect x="${g.x}" y="${hostsTop-28}" width="${g.w}" height="${maxH+40}" rx="12" fill="none" stroke="#1d9bd1" stroke-dasharray="6 5"/><text x="${g.x+12}" y="${hostsTop-11}" fill="#8fd0f5" font-size="11" font-weight="600">${did("CL",c.id)} · ${E(c.name)}${c.ha?" · HA":""}${c.drs?" · LB":""}</text></g>`)}
+  else if(groups.length>1||S.clusters.length)N.push(`<text x="${g.x+12}" y="${hostsTop-11}" fill="#8b98a7" font-size="11">Standalone hosts</text>`)});
+ S.hosts.forEach(h=>{const p=hp[h.id],hx=p.x+p.w/2,col=h.status==="failed"?"#f85149":h.status==="maintenance"?"#d29922":"#3fb950";
+  sws.forEach(s=>L.push(`<line x1="${sPos[s.id]}" y1="${swY+52}" x2="${hx}" y2="${hostsTop}" stroke="#3a4a5c" stroke-width="1.6"/>`));
+  let t=`<g data-act="goto" data-v="dc|dc-hosts" style="cursor:pointer"><title>${E(h.name)} · ${E(h.vendor)} · ${HVNAME[h.hyp]} · ${h.status}</title><rect x="${p.x}" y="${hostsTop}" width="${p.w}" height="${p.h}" rx="9" fill="#1e2731" stroke="${col}" stroke-width="1.6"/><rect x="${p.x}" y="${hostsTop}" width="5" height="${p.h}" rx="2" fill="${col}"/>
+   <text x="${p.x+14}" y="${hostsTop+19}" fill="#dbe3ec" font-size="12" font-weight="700">${did("HST",h.id)} · ${E(h.name)}</text><text x="${p.x+14}" y="${hostsTop+35}" fill="#8b98a7" font-size="10">${TERMS[h.hyp].hv} · ${h.cpu}c / ${h.ram} GB · ${h.status}</text>
+   <text x="${p.x+14}" y="${hostsTop+50}" fill="#8b98a7" font-size="10">${o.ips&&ip[h.id]?"mgmt "+ip[h.id]+" · ":""}${E(h.vendor)}</text></g>`;
+  if(o.vms)vmsOn(h).forEach((v,i)=>{const y=hostsTop+66+i*19,c=v.vlanId?vlanColor(v.vlanId):"#6e7681",fc=v.power==="on"?"#dbe3ec":v.power==="down"?"#ff7b72":"#6e7681";
+   t+=`<g data-act="goto" data-v="virt|virt-vms" style="cursor:pointer"><title>${E(v.name)} · ${E(v.role)} · ${E(v.os)} · ${v.power}${v.vlanId?" · VLAN "+(byId(S.vlans,v.vlanId)||{}).vlan:" · no network"}</title><rect x="${p.x+10}" y="${y-12}" width="${p.w-20}" height="17" rx="4" fill="#111a22"/><circle cx="${p.x+19}" cy="${y-3.5}" r="4" fill="${c}"/><text x="${p.x+28}" y="${y}" fill="${fc}" font-size="10.5">${did("VM",v.id)} · ${E(v.name)}${o.ips&&ip[v.id]?" · "+ip[v.id]:""}${v.power!=="on"?" · "+v.power:""}</text></g>`});
+  N.push(t)});
+ // storage
+ if(showSt){const stW=210,stG=20,tot=S.storage.length*stW+(S.storage.length-1)*stG;let stx=Math.max(40,cx-tot/2);
+  S.storage.forEach(st=>{const scx=stx+stW/2;st.hostIds.forEach(hid=>{const p=hp[hid];if(p)L.push(`<line x1="${p.x+p.w/2}" y1="${hostsTop+p.h}" x2="${scx}" y2="${stTop}" stroke="#a371f7" stroke-width="1.3" stroke-dasharray="5 4" stroke-opacity=".8"/>`)});
+   const used=S.vms.filter(v=>v.storageId===st.id).reduce((a,v)=>a+v.disk,0)/1000;
+   N.push(`<g data-act="goto" data-v="dc|dc-storage" style="cursor:pointer"><title>${E(st.name)} · ${STYPES[st.type]} · presented to ${st.hostIds.length} host(s)</title><rect x="${stx}" y="${stTop}" width="${stW}" height="56" rx="8" fill="#211a33" stroke="#a371f7" stroke-width="1.5"/><text x="${scx}" y="${stTop+20}" text-anchor="middle" fill="#d2b8ff" font-size="12" font-weight="700">${did("STG",st.id)} · ${E(st.name)}</text><text x="${scx}" y="${stTop+36}" text-anchor="middle" fill="#8b98a7" font-size="10">${STYPES[st.type]} · ${used.toFixed(1)}/${st.cap} TB · ${st.hostIds.length} host(s)</text>${o.ips&&ip[st.id]?`<text x="${scx}" y="${stTop+50}" text-anchor="middle" fill="#8b98a7" font-size="10">${ip[st.id]}</text>`:""}</g>`);stx+=stW+stG})}
+ // remote sites
+ sites.forEach((s,i)=>{const sy=120+i*118,sx2=mainW+40,h=40+Math.max(1,s.vlans.length)*16+14,ok=!!s.t;
+  L.push(ok?`<path d="M ${fwX+fwW} ${fwY+29} C ${fwX+fwW+120} ${fwY+29}, ${sx2-80} ${sy+24}, ${sx2} ${sy+24}" fill="none" stroke="#2fb39a" stroke-width="2" stroke-dasharray="8 5"/>`:"");
+  N.push(`<g data-act="goto" data-v="net|net-vpn" style="cursor:pointer"><title>${ok?E(s.t.name)+" · "+E(s.t.type)+" · "+E(s.t.auth):"No VPN tunnel to this site"}</title><rect x="${sx2}" y="${sy}" width="${SW}" height="${h}" rx="9" fill="#14231f" stroke="${ok?"#2fb39a":"#f85149"}" stroke-width="1.5"/><text x="${sx2+12}" y="${sy+19}" fill="${ok?"#7fe0cc":"#ffa198"}" font-size="12" font-weight="700">Site: ${E(s.name)}</text><text x="${sx2+12}" y="${sy+35}" fill="#8b98a7" font-size="10">${ok?`${did("VPN",s.t.id)} · ${E(s.t.type)} · ${s.t.status}`:"⚠ not connected (no VPN tunnel)"}</text>
+   ${s.vlans.length?s.vlans.map((v,j)=>`<circle cx="${sx2+16}" cy="${sy+50+j*16}" r="4" fill="${vlanColor(v.id)}"/><text x="${sx2+26}" y="${sy+54+j*16}" fill="#dbe3ec" font-size="10.5">VLAN ${v.vlan} · ${E(v.name)} · ${E(v.subnet)}</text>`).join(""):`<text x="${sx2+12}" y="${sy+54}" fill="#8b98a7" font-size="10">No VLANs assigned to this site yet</text>`}</g>`)});
+ const title=`${S.ad.domain?E(S.ad.domain):"IT Lab"} network · ${S.hosts.length} host(s), ${S.vms.length} VM(s), ${S.vlans.length} VLAN(s)`;
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Segoe UI, system-ui, -apple-system, Roboto, sans-serif"><rect width="${W}" height="${H}" fill="#0f1419"/><text x="20" y="22" fill="#8b98a7" font-size="11">${title}</text><text x="${W-20}" y="22" text-anchor="end" fill="#56606b" font-size="10">Generated ${E(new Date().toLocaleString())} · IT Lab Simulator</text>${L.join("")}${N.join("")}</svg>`;
+ return{svg,W,H,ip}}
+function dgmInventory(){const ip=dgmIPs(),rows=[];const vl=id=>{const v=byId(S.vlans,id);return v?`VLAN ${v.vlan} ${v.name}`:""};
+ rows.push(["ISP-001","Internet","WAN uplink","","","","up"]);
+ rows.push(["FW-001","Edge firewall / router","Firewall",`${S.fw.length} rules`,"All VLANs (gateway .1)","","up"]);
+ swList().forEach(s=>rows.push([swId(s),s.name,s.type,`${s.implied?"":s.uplinks+" uplinks"}`,`${s.vlanIds.length} VLANs`,"","up"]));
+ S.vpn.forEach(t=>rows.push([did("VPN",t.id),t.name,`VPN (${t.type})`,`to ${t.peer}`,"","",t.status]));
+ S.clusters.forEach(c=>rows.push([did("CL",c.id),c.name,c.hyp==="vmware"?"vSphere cluster":"Failover cluster",`${S.hosts.filter(h=>h.clusterId===c.id).length} hosts`,"","",[c.ha&&"HA",c.drs&&"LB"].filter(Boolean).join("+")||"basic"]));
+ S.hosts.forEach(h=>rows.push([did("HST",h.id),h.name,`Host (${HVNAME[h.hyp]})`,(byId(S.clusters,h.clusterId)||{}).name||"standalone",ip[h.id]?"Management VLAN":"",ip[h.id]||"",h.status]));
+ S.vms.forEach(v=>rows.push([did("VM",v.id),v.name,`VM (${v.role})`,(byId(S.hosts,v.hostId)||{}).name||"",vl(v.vlanId),ip[v.id]||"",v.power]));
+ S.storage.forEach(s=>rows.push([did("STG",s.id),s.name,STYPES[s.type],`${s.hostIds.length} hosts`,ip[s.id]?"Storage VLAN":"",ip[s.id]||"",`${s.cap} TB`]));
+ S.vlans.forEach(v=>rows.push([`VLAN-${v.vlan}`,v.name,"VLAN / subnet",v.site||"HQ",v.subnet,`${subnetBase(v)}.1 (GW)`,S.dhcp.some(d=>d.vlanId===v.id)?"DHCP":"static"]));
+ return rows}
+const INV_HEAD=["ID","Name","Type","Parent / location","Network","IP address","Status"];
+const csvOf=rows=>[INV_HEAD,...rows].map(r=>r.map(c=>/[",\n]/.test(String(c))?`"${String(c).replace(/"/g,'""')}"`:c).join(",")).join("\n");
+function vDiagram(){const o=dgmOpts();if(!S.hosts.length&&!S.vlans.length)return`<h2 data-anchor="dgm-main">Network Diagram ${tip("diagram")}</h2><p class="sub">A live map of your lab with device IDs.</p><div class="card empty">Nothing to draw yet. Add hosts and VLANs, or click <b>Load sample environment</b>.</div>`;
+ const d=dgmBuild(),inv=dgmInventory();const chk=(k,l)=>`<label class="row" style="gap:5px;font-size:13px"><input type="checkbox" style="width:auto" data-act="dgmOpt" data-v="${k}" ${o[k]?"checked":""}>${l}</label>`;
+ return`<h2 data-anchor="dgm-main">Network Diagram ${tip("diagram")} ${libBtn("diagram")}</h2><p class="sub">Generated from your lab right now. Click any device to jump to where it's managed; hover for details.</p>
+ <div class="card" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><div class="row">${chk("vms","VMs")}${chk("ips","IP addresses")}${chk("storage","Storage links")}</div>
+ <div class="row"><button class="sm" data-act="dgmZoom" data-v="-1">−</button><span style="font-size:12px;min-width:42px;text-align:center">${Math.round(o.zoom*100)}%</span><button class="sm" data-act="dgmZoom" data-v="1">+</button><button class="sm" data-act="dgmZoom" data-v="0">Fit</button></div></div>
+ <div class="row" style="margin-top:10px">${DL.mode!=="none"?`<button class="sm pri" data-act="dgmSave" data-v="svg" data-tip="diagram">⬇ SVG</button><button class="sm" data-act="dgmSave" data-v="png">⬇ PNG</button><button class="sm" data-act="dgmSave" data-v="csv">⬇ Inventory CSV</button>`:""}<button class="sm" data-act="dgmCopy" data-v="csv">Copy inventory</button><button class="sm" data-act="dgmCopy" data-v="svg">Copy SVG code</button></div></div>
+ <div class="card" style="padding:8px;overflow:auto;max-height:75vh" id="dgmWrap"><div style="width:${Math.round(d.W*(o.zoom||1))}px">${d.svg.replace(`width="${d.W}" height="${d.H}"`,`width="100%" style="display:block"`)}</div></div>
+ <div class="card" style="margin-top:12px"><h3>Device inventory ${tip("diagram")}</h3><div class="tw"><table><tr>${INV_HEAD.map(h=>`<th>${h}</th>`).join("")}</tr>${inv.map(r=>`<tr>${r.map((c,i)=>`<td${i===0?' style="font-family:ui-monospace,Consolas,monospace;font-size:12px"':""}>${esc(c)}</td>`).join("")}</tr>`).join("")}</table></div>
+ <p style="font-size:12px;color:var(--mute)">IP addresses are assigned by the simulator from each VLAN's subnet: gateway .1, hosts on the Management VLAN from .2, VMs from .10, storage on a Storage VLAN from .240.</p></div>`}
+/* downloads: claude.ai capability when present, plain browser download elsewhere */
+const DL={mode:"pending",ns:null};
+(function dlInit(){let n=0;const go=async()=>{if(window.claude&&typeof window.claude.use==="function"){try{DL.ns=await window.claude.use("downloads")}catch(e){DL.ns=null}DL.mode=DL.ns?"claude":"none";if(S.tab==="diagram")render();return}
+ if(++n<15)return setTimeout(go,200);DL.mode="browser";if(S.tab==="diagram")render()};go()})();
+function dgmPNG(){return new Promise((res,rej)=>{const d=dgmBuild(),sc=2,img=new Image();img.onload=()=>{try{const c=document.createElement("canvas");c.width=d.W*sc;c.height=d.H*sc;const x=c.getContext("2d");x.scale(sc,sc);x.drawImage(img,0,0);c.toBlob(b=>b?res(b):rej(new Error("PNG render failed")),"image/png")}catch(e){rej(e)}};img.onerror=()=>rej(new Error("PNG render failed"));img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(d.svg)})}
+async function dgmSaveFile(kind){const base=`${(S.ad.domain||"itlab").replace(/[^a-z0-9.-]/gi,"_")}-network-diagram`;let data,filename;
+ try{if(kind==="svg"){data=dgmBuild().svg;filename=base+".svg"}else if(kind==="png"){data=await dgmPNG();filename=base+".png"}else{data=csvOf(dgmInventory());filename=base.replace("diagram","inventory")+".csv"}
+  if(DL.mode==="claude"){await DL.ns.save({filename,data})}
+  else{const blob=data instanceof Blob?data:new Blob([data],{type:kind==="svg"?"image/svg+xml":"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+  log(`Network diagram exported: ${filename}`,"ok");commit()}
+ catch(e){if(e&&e.code==="declined")return;if(e&&["unavailable","not_granted","capability_disabled","capability_removed"].includes(e.code)){DL.mode="none";render();return}toast(`Couldn't save the file${e&&e.message?": "+e.message:""}. Use Copy instead.`)}}
+Object.assign(A,{
+ dgmOpt(k){const o=dgmOpts();o[k]=!o[k];S.dgm=o},
+ dgmZoom(v){const o=dgmOpts();o.zoom=+v===0?1:Math.min(2.5,Math.max(.4,Math.round((o.zoom+(+v)*.2)*10)/10));S.dgm=o},
+ dgmSave(k){dgmSaveFile(k);return"__toast"},
+ dgmCopy(k){const t=k==="svg"?dgmBuild().svg:csvOf(dgmInventory());const done=()=>{log(`${k==="svg"?"Diagram SVG":"Inventory"} copied to clipboard`,"ok");commit()};
+  try{navigator.clipboard.writeText(t).then(done,()=>toast("Clipboard access was blocked by the browser."))}catch(e){toast("Clipboard isn't available here.")}return"__toast"}});
+LIB.forEach(g=>{if(["network-topologies","office-network","network-redundancy"].includes(g.id))g.keys.push("diagram")});
+LIB_ANCHOR.diagram=["diagram","dgm-main","Network Diagram"];
 if(!S.log.length)log("Welcome. Load the sample environment or start from Datacenter → Add host. Hover (or tap) any ? for help.");
 if(innerWidth<760)document.getElementById("log").classList.add("min");
 render();

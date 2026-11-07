@@ -62,6 +62,13 @@ Build and operate a company's IT environment in either a **VMware vSphere-style*
 - Backup jobs to local, **immutable**, or **offsite/cloud** repositories with RPO choices, plus **restore tests**
 - **Security posture score** (12 checks) on the dashboard, showing gaps at a glance
 
+### Network Diagram
+- A live diagram generated from your lab: internet uplink, edge firewall, switches, VLANs/subnets, clusters, hosts, VMs, storage links and remote sites over VPN (unconnected sites are flagged)
+- **Device IDs on everything** (`FW-001`, `SW-…`, `CL-…`, `HST-…`, `VM-…`, `STG-…`, `VPN-…`) and simulator-assigned IP addresses (gateway .1, hosts from .2 on the Management VLAN, VMs from .10, storage from .240 on a Storage VLAN)
+- Status colors (online, maintenance, failed; VM on/off/down) and VLAN color coding
+- Toggle VMs, IPs and storage links; zoom; click any device to jump to where it's managed
+- **Device inventory** table, plus export as **SVG**, **PNG** or **CSV**, or copy to the clipboard
+
 ### Learning Library
 - **50 networking guides** from [natted.cloud/learn](https://natted.cloud/learn) in seven categories (Fundamentals, Routing & Protocols, Security, Troubleshooting, Cloud & Modern Networking, Switching & Layer 2, Real-World Scenarios), each with a short summary and a link to the full guide
 - Search and category filters
@@ -162,7 +169,7 @@ The assistant uses the claude.ai artifact runtime's `sample` capability (`claude
 
 ## Hosting
 - **GitHub Pages:** served from the `main` branch root (`index.html` landing page, `.nojekyll` so files are served as-is). Everything works there except the AI assistant.
-- **claude.ai artifacts:** the RMM Lab artifact has the `sample` capability that powers the AI assistant.
+- **claude.ai artifacts:** the RMM Lab artifact has the `sample` capability that powers the AI assistant; the IT Lab artifact has `downloads` for diagram exports. On GitHub Pages, exports use a normal browser download.
 
 ## License
 MIT, see [LICENSE](LICENSE). You're free to use, adapt and share these simulators; please keep the copyright notice.
@@ -176,3 +183,4 @@ MIT, see [LICENSE](LICENSE). You're free to use, adapt and share these simulator
 | `rmmlab-v3` | Assistant can dock as a resizable sidebar |
 | `site-v1` | MIT license, GitHub Pages landing page |
 | `itlab-v2` | Learning Library linked to natted.cloud/learn guides |
+| `itlab-v3` | Network diagram with device IDs, inventory and SVG/PNG/CSV export |
