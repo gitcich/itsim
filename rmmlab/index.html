@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RMM Lab Simulator</title>
+<style>
+:root{--bg:#0f1318;--panel:#171c23;--panel2:#1f2630;--line:#2b3440;--text:#dde4ec;--mute:#8b98a7;--acc:#2fb39a;--acc2:#1b7a68;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--chip:#243040}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:6px;padding:6px 11px}
+button:hover{border-color:var(--acc)}button.pri{background:var(--acc2);border-color:var(--acc)}button.dan{border-color:#6b2a2a;color:#ffb3ae}
+button.sm{padding:3px 8px;font-size:12px}
+input,select,textarea{font:inherit;background:#0c1014;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+header h1{font-size:17px;margin:0;font-weight:600}
+.logo{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,var(--acc),#155a8a);display:grid;place-items:center;font-weight:700;font-size:11px}
+.clock{font:12px ui-monospace,Consolas,monospace;background:#0c1014;border:1px solid var(--line);border-radius:6px;padding:5px 9px}
+.spacer{flex:1}
+.layout{display:grid;grid-template-columns:200px 1fr;min-height:calc(100vh - 52px)}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:10px 8px}
+nav button{display:flex;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;margin-bottom:2px;gap:8px;align-items:center;justify-content:space-between}
+nav button.on{background:var(--panel2);box-shadow:inset 3px 0 0 var(--acc)}
+main{padding:16px;min-width:0;padding-bottom:240px}
+.banner{font-size:12px;color:var(--mute);margin-bottom:12px}
+h2{font-size:18px;margin:0 0 4px;display:flex;align-items:center;gap:6px}h3{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:6px}
+.sub{color:var(--mute);margin:0 0 14px}
+.grid{display:grid;gap:12px}.g2{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}.g4{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.stat .n{font-size:26px;font-weight:600}.stat .l{color:var(--mute);font-size:12px;display:flex;gap:4px;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--mute);font-weight:500;font-size:12px}.tw{overflow-x:auto}
+tr.sel td{background:#14302b}tr.click{cursor:pointer}tr.click:hover td{background:#1a232c}
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;background:var(--chip);white-space:nowrap}
+.pill.ok{background:#173d22;color:#7ee28f}.pill.bad{background:#4a1c1c;color:#ffa198}.pill.warn{background:#3d3012;color:#f0c86a}.pill.acc{background:#123a34;color:#7fe0cc}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bar{height:7px;background:#0c1014;border-radius:4px;overflow:hidden;margin-top:3px;min-width:60px}.bar i{display:block;height:100%;background:var(--acc)}.bar i.hot{background:var(--warn)}.bar i.crit{background:var(--bad)}
+.tip-ic{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--mute);color:var(--mute);font-size:10px;font-weight:700;cursor:help;flex:none;user-select:none}
+.tip-ic:hover{border-color:var(--acc);color:var(--acc)}[data-tip]{cursor:help}
+#tip{position:fixed;z-index:100;max-width:360px;background:#0a0e12;border:1px solid var(--acc);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px #000a;display:none;font-size:13px}
+#tip h4{margin:0 0 6px;font-size:14px;color:var(--acc)}#tip .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin-top:8px}#tip p{margin:2px 0}
+#log{position:fixed;right:12px;bottom:12px;width:400px;max-width:calc(100vw - 24px);background:var(--panel);border:1px solid var(--line);border-radius:10px;z-index:30;box-shadow:0 8px 24px #0008}
+#log .hd{display:flex;justify-content:space-between;padding:7px 10px;border-bottom:1px solid var(--line);cursor:pointer;font-size:12px;color:var(--mute)}
+#log .bd{max-height:170px;overflow:auto;padding:6px 10px;font:12px/1.5 ui-monospace,Consolas,monospace}#log.min .bd{display:none}
+.lg-ok{color:#7ee28f}.lg-bad{color:#ffa198}.lg-warn{color:#f0c86a}.lg-info{color:#9fb3c8}
+.modal-bg{position:fixed;inset:0;background:#000a;z-index:50;display:grid;place-items:center;padding:12px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(560px,100%);max-height:90vh;overflow:auto;padding:18px}
+.modal.wide{width:min(760px,100%)}
+.field{margin-bottom:11px}.field label{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mute);margin-bottom:4px}
+.checks{display:flex;flex-wrap:wrap;gap:6px}.checks label{display:flex;gap:5px;align-items:center;background:var(--panel2);padding:4px 8px;border-radius:6px;color:var(--text);font-size:12px}.checks input{width:auto}
+.ctl{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}.ctl:last-child{border-bottom:0}
+.ctl .nm{font-weight:500;display:flex;gap:6px;align-items:center}.ctl .ds{font-size:12px;color:var(--mute)}
+.sw{position:relative;width:40px;height:22px;flex:none}.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:#2b3440;border-radius:22px;transition:.2s;cursor:pointer}
+.sw span:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#cfd8e2;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--ok)}.sw input:checked+span:before{transform:translateX(18px)}
+.obj{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.obj .ck{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:12px}
+.obj.done .ck{background:var(--ok);border-color:var(--ok);color:#06210c}.obj .hint{font-size:12px;color:var(--mute)}
+.scbar{background:#11262a;border:1px solid var(--acc2);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+.empty{color:var(--mute);font-style:italic;padding:8px 0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:10px;flex-wrap:wrap}
+.tabs button{border:0;border-radius:6px 6px 0 0;background:transparent;padding:6px 10px}.tabs button.on{background:var(--panel2);box-shadow:inset 0 -2px 0 var(--acc)}
+.board{display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:10px;overflow-x:auto}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:120px}
+.col h4{margin:0 0 8px;font-size:13px;color:var(--mute);display:flex;justify-content:space-between}
+.tk{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;font-size:12px;cursor:pointer}.tk:hover{border-color:var(--acc)}
+.tk.breach{border-color:var(--bad)}
+.term{background:#05080a;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px/1.5 ui-monospace,Consolas,monospace;min-height:120px;max-height:220px;overflow:auto;color:#a8f0c6;white-space:pre-wrap}
+.tree .org{margin-bottom:10px}.tree .loc{margin-left:16px;font-size:13px;color:var(--mute)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:5px}.dot.off{background:#56606b}.dot.alert{background:var(--bad)}
+@media (max-width:760px){.layout{grid-template-columns:1fr}nav{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:6px}
+ nav button{width:auto;white-space:nowrap;margin:0 2px}nav button.on{box-shadow:inset 0 -3px 0 var(--acc)}main{padding:12px;padding-bottom:90px}#log{width:auto;left:12px}}
+</style>
+</head>
+<body>
+<header>
+ <div class="row"><div class="logo">RMM</div><h1>RMM Lab Simulator</h1><span class="tip-ic" data-tip="rmm">?</span></div>
+ <span class="clock" id="clock" data-tip="clock"></span>
+ <button data-act="tick" data-v="1" data-tip="clock">+1 hour ▶</button>
+ <button data-act="tick" data-v="24">+1 day ▶▶</button>
+ <div class="spacer"></div>
+ <button data-act="sample">Load sample MSP</button>
+ <button class="dan" data-act="reset">Reset</button>
+</header>
+<div class="layout"><nav id="nav"></nav><main id="main"></main></div>
+<div id="log"><div class="hd" data-act="logtoggle"><span>Activities</span><span id="logcount"></span></div><div class="bd" id="logbd"></div></div>
+<div id="tip"></div><div id="modalRoot"></div>
+<script>
+/* ===================== GLOSSARY ===================== */
+const G={
+rmm:{t:"RMM Lab Simulator",d:"An independent practice console modeled on the workflows of NinjaOne, a remote monitoring & management (RMM) and endpoint management platform used by MSPs and IT departments. Not affiliated with or endorsed by NinjaOne.",h:"Load the sample MSP, then advance the clock to let monitoring, patching, automations and backups run. Try a scenario for guided practice.",a:"Other RMM/endpoint platforms: ConnectWise Automate & RMM, Datto RMM (Kaseya), N-able N-central / N-sight, Kaseya VSA, Atera, Syncro, Action1, Microsoft Intune (endpoint management)."},
+clock:{t:"Simulation clock",d:"Time only moves when you advance it. Each hour the agents report in: metrics drift, conditions are evaluated, scheduled automations run, and patch/backup schedules fire at their set hours.",h:"Use +1 hour for fine-grained testing, +1 day to run a full patch/backup cycle.",a:"In the real product, agents check in continuously and schedules run on real time."},
+org:{t:"Organization",d:"A client (for an MSP) or business unit. Top level of the hierarchy: Organization → Location → Device. Each organization maps device roles to agent policies.",h:"Organizations → Add organization. Choose a policy for each device role, add locations, then deploy agents.",a:"Called 'Clients' in Datto RMM, 'Customers' in N-able, 'Companies' in ConnectWise."},
+location:{t:"Location",d:"A site within an organization (office, branch, remote workers). Used for filtering, reporting, installers and location-specific settings.",h:"Add one per physical site, plus one like 'Remote' for work-from-home devices.",a:"Sites (Datto, N-able), Locations (ConnectWise)."},
+installer:{t:"Agent installer",d:"An installer generated for a specific organization + location. Devices that run it check in already placed in the right org, location and policy.",h:"Organizations → Deploy agents. In real life you'd push the MSI by GPO, Intune, or a deployment tool, or send a link for users to run.",a:"Every RMM uses per-site installers or registration tokens."},
+agent:{t:"Agent",d:"Lightweight software on each device that reports health, runs scripts, applies patches and enables remote access.",h:"If a device stops checking in, it shows offline and offline conditions can alert.",a:"Agentless monitoring via SNMP / WMI is used for network gear and printers."},
+device:{t:"Device",d:"A managed endpoint: workstation, server, Mac or Linux machine. The device page shows health, patches, software, alerts and actions.",h:"Devices → click a row to open its details and actions.",a:"Network devices (switches, firewalls) are monitored via SNMP in the NMS module."},
+role:{t:"Device role",d:"The device class (Windows Workstation, Windows Server, macOS, Linux Server). The organization's policy mapping uses the role to pick which agent policy applies.",h:"Set when the agent is deployed; a device-level policy override can replace it.",a:"Device groups / dynamic groups in other RMMs."},
+policy:{t:"Agent policy",d:"The central configuration for a device role: monitoring conditions, scheduled automations, patching, software, antivirus and backup. Configure once, apply to every device mapped to it.",h:"Policies page → open a policy → use its tabs. Keep a small number of well-named policies.",a:"Monitoring templates (N-able), Policies (Datto), Intune configuration & compliance policies."},
+inherit:{t:"Policy inheritance",d:"A child policy inherits everything from its parent and adds or overrides settings. Change the parent once and every child gets it.",h:"Create a child for a client with special needs instead of copying a whole policy. In this sim, child conditions and automations are added to the parent's; patch/software/AV/backup settings inherit unless the child sets its own.",a:"Template hierarchies exist in most RMMs."},
+cond:{t:"Condition",d:"A monitoring rule: when a metric crosses a threshold (disk, CPU, offline, service stopped, pending reboot, AV, backup), it raises an alert and can trigger actions.",h:"Policy → Conditions → Add. Pick a severity and actions: create ticket, notify, and/or run an automation to self-heal.",a:"Monitors / thresholds in other RMMs; Azure Monitor alert rules."},
+compound:{t:"Compound condition",d:"A condition that only fires when several things are true together (e.g., disk is high AND a reboot is pending), reducing noisy alerts.",h:"Pick 'Compound: disk high AND pending reboot' as the condition type.",a:"Multi-criteria monitors / correlation rules."},
+sev:{t:"Severity",d:"How serious an alert is: Critical, Major, Moderate, Minor. Drives notification routing and ticket priority.",h:"Reserve Critical for outages and data risk (server offline, backup failed).",a:"P1–P4 priorities in PSA tools."},
+remed:{t:"Automated remediation",d:"An automation that runs when a condition fires to fix the problem (e.g., clear temp files on low disk). If the fix works, the alert resets on its own.",h:"In the condition, choose an automation under 'Run automation'. Add 'Create ticket' too so there's a record.",a:"Self-healing in Datto/N-able, Intune remediations (proactive remediations)."},
+auto:{t:"Scheduled automation",d:"An Automation Library item run on a schedule by a policy (maintenance tasks, inventory, cleanup).",h:"Policy → Scheduled automations → Add. Choose the script and Hourly or Daily 03:00.",a:"Scheduled tasks in Datto/N-able, Intune platform scripts, Ansible schedules."},
+lib:{t:"Automation Library",d:"Your reusable scripts (PowerShell, Batch, ShellScript, Python) and built-in actions, run on demand, by conditions or on schedules.",h:"Automation Library → Add script. Name it clearly, set the language and categories, and test on one device first.",a:"Community script shares (NinjaOne Dojo, Datto ComStore), GitHub repos, Intune scripts."},
+patch:{t:"OS patch management",d:"The policy scans for missing OS updates, auto-approves or rejects them by severity, installs approved ones in the maintenance window and handles reboots.",h:"Policy → Patching: enable, set scan and install hours, approval per severity, and reboot behavior.",a:"Microsoft Intune / Windows Autopatch, Azure Update Manager, Action1, ManageEngine Patch Manager, WSUS (deprecated)."},
+ptues:{t:"Patch Tuesday",d:"Microsoft's monthly security release, the second Tuesday of each month. Usually brings a cumulative update plus other fixes.",h:"Click 'Release Patch Tuesday' on the Patching page to simulate the release, then scan, approve and install.",a:"Third-party vendors release on their own cadence; browsers update almost weekly."},
+approve:{t:"Patch approval",d:"Rules that decide what happens to a scanned patch: Approve (install automatically), Reject (never install) or Manual (a tech decides).",h:"Common baseline: Critical + Important = Approve, Moderate = Manual, Low/driver = Manual or Reject.",a:"Approval rings: pilot devices get patches days before the rest."},
+ai:{t:"Patch Intelligence AI",d:"NinjaOne's feature that analyzes telemetry and vendor feedback to flag Windows updates that look unstable. Admins can then approve or reject the flagged patch.",h:"Turn on 'Hold AI-flagged patches' in the policy. Flagged patches are held even if their severity is auto-approved.",a:"Patch rings with a pilot group, community intelligence feeds (e.g., PatchManagement.org), vendor known-issue pages."},
+window:{t:"Maintenance window",d:"The hours when installs and reboots are allowed, so users aren't interrupted.",h:"Set the scan hour and install hour in the policy (e.g., scan 01:00, install 02:00).",a:"Intune update rings with active hours; Windows Autopatch deployment rings."},
+reboot:{t:"Reboot management",d:"Many patches need a restart. Options: reboot automatically in the window, prompt the user, or never (leave a pending reboot).",h:"Servers often use 'Never' with a separate controlled reboot; workstations use 'Prompt user' or automatic overnight.",a:"Cluster-aware updating for clustered servers."},
+tpp:{t:"Third-party software patching",d:"Keeps common apps (Chrome, Firefox, Zoom, Adobe Reader, 7-Zip) updated automatically — a major source of vulnerabilities if ignored.",h:"Policy → Software → choose apps under 'Third-party patching'.",a:"Patch My PC, Action1, Chocolatey/Winget scripts, ManageEngine."},
+swdeploy:{t:"Software deployment",d:"Install standard applications automatically on every device in a policy.",h:"Policy → Software → choose apps under 'Install'. They install on the next check-in.",a:"Intune app deployment, Winget/Chocolatey scripts, PDQ Deploy."},
+av:{t:"Antivirus / EDR",d:"Endpoint protection deployed and monitored through the policy. The RMM shows status and threats on each device.",h:"Policy → Security → enable. Add an 'Antivirus not running' condition to catch broken agents.",a:"Microsoft Defender for Endpoint, Bitdefender GravityZone, SentinelOne, CrowdStrike, Huntress."},
+backup:{t:"Backup",d:"Policy-driven backups: Image (whole machine) or File & Folder, to Cloud, Local or Hybrid (both) storage.",h:"Policy → Backup: enable, choose type, destination and hour. Add a 'Backup failed' condition.",a:"Datto BCDR, Veeam, Acronis Cyber Protect, Axcient, N-able Cove."},
+restore:{t:"Restore test",d:"Proving a backup can actually be restored. Backups that have never been tested aren't proven to work.",h:"Backup page → Test restore on a device with a successful backup.",a:"Automated screenshot verification (Datto, Veeam SureBackup)."},
+remote:{t:"Remote access",d:"Take control of or work on a device remotely. Background tools (services, terminal, files, processes) let you fix things without interrupting the user.",h:"Device → Remote session. Use Services to restart a stopped service, Terminal for commands, then log a ticket note.",a:"ConnectWise ScreenConnect, Splashtop, TeamViewer, Microsoft Remote Help, RDP over VPN."},
+alert:{t:"Alerts",d:"Raised by conditions. Active until the condition clears (auto-reset) or a tech resets it.",h:"Alerts page: review, create a ticket, or reset. Fix the root cause, not just the alert.",a:"Alert dashboards in every RMM; PagerDuty/Opsgenie for on-call routing."},
+ticket:{t:"Ticketing",d:"Built-in help desk: tickets from alerts, email or manual entry, with status, priority, assignee, time and notes.",h:"Ticketing page: assign, move through statuses, add notes, resolve. Watch the SLA timer.",a:"PSA tools: ConnectWise PSA, Autotask (Datto), HaloPSA, Freshservice, ServiceNow; many RMMs integrate with these."},
+sla:{t:"SLA",d:"Service Level Agreement: the promised time to resolve by priority. Here P1 = 4h, P2 = 8h, P3 = 24h, P4 = 72h (simulated clock).",h:"Tickets past their SLA are outlined in red. Work P1s first.",a:"SLA timers are a core PSA feature (response vs. resolution targets)."},
+docs:{t:"IT documentation",d:"Per-organization knowledge: credentials (vaulted), apps & services, network info and knowledge base articles — next to the devices they describe.",h:"Organizations → Documentation. Never store passwords in tickets or notes.",a:"IT Glue, Hudu, Passportal, Keeper, Confluence."},
+cred:{t:"Credential vault",d:"Encrypted storage for passwords with access control and audit logging.",h:"Add credentials as type 'Credential'; they show masked until revealed.",a:"IT Glue / Passportal, Keeper, 1Password Business, Bitwarden."},
+disk:{t:"Disk usage",d:"Percent of the system drive used. Above ~90%, Windows updates fail and apps slow down.",h:"Monitor with a disk condition; remediate with a cleanup script.",a:"Storage Sense (Windows), cleanup scripts."},
+svc:{t:"Windows services",d:"Background programs (Print Spooler, Windows Update, etc.). A stopped service is a classic help-desk ticket.",h:"Use a service condition to alert, and a restart script or remote session to fix.",a:"Service monitors in every RMM."},
+compliance:{t:"Patch compliance",d:"Share of Windows devices with no outstanding Critical or Important patches. Held, rejected and manually deferred patches don't count against it.",h:"Patching page shows compliance per organization.",a:"Compliance reporting in Intune / Autopatch reports."},
+scn:{t:"Practice scenarios",d:"Guided exercises based on everyday MSP and help-desk work. Each one loads the sample MSP and checks your objectives live.",h:"Start one; the checklist appears at the top of every page.",a:"Vendor academies (NinjaOne Dojo & training, Datto/Kaseya University, N-able training) and free trials."},
+health:{t:"Health overview",d:"Fleet-wide status: devices online, active alerts, open tickets, patch compliance, AV and backup coverage.",h:"Start your day here; drill into whatever is red.",a:"Custom dashboards and scheduled reports."}
+};
+
+/* ===================== CONSTANTS ===================== */
+const ROLES=["Windows Workstation","Windows Server","macOS","Linux Server"];
+const SEVS=["Critical","Major","Moderate","Minor"];
+const PSEV=["Critical","Important","Moderate","Low"];
+const APPS=["Google Chrome","Mozilla Firefox","7-Zip","Zoom Workplace","Adobe Acrobat Reader","Microsoft 365 Apps","Microsoft Teams"];
+const TECHS=["Unassigned","Alex (Tier 1)","Sam (Tier 2)","Jordan (Lead)"];
+const SLA={P1:4,P2:8,P3:24,P4:72};
+const CONDS={disk:"Disk usage above %",cpu:"CPU above %",offline:"Device offline",svc:"Print Spooler service stopped",reboot:"Pending reboot",avoff:"Antivirus not running",bkfail:"Backup failed / overdue",compound:"Compound: disk above % AND pending reboot"};
+const EFFECTS={cleanDisk:"Frees ~15% disk",restartSvc:"Restarts Print Spooler",reboot:"Reboots device",flushDns:"Flushes DNS cache",inventory:"Collects inventory",startAV:"Starts antivirus service",none:"No simulated effect"};
+
+/* ===================== STATE ===================== */
+function fresh(){return{clock:0,seed:7,orgs:[],locs:[],devices:[],policies:[],scripts:builtinScripts(),alerts:[],tickets:[],docs:[],flags:{},log:[],seq:1,tab:"dash",sel:null,ptab:"cond",polSel:null,scenario:null,tnum:1001}}
+function builtinScripts(){return[
+ {id:"x1",name:"Clean temp files & recycle bin",lang:"PowerShell",cat:"Maintenance",effect:"cleanDisk",builtIn:true},
+ {id:"x2",name:"Restart Print Spooler",lang:"PowerShell",cat:"Remediation",effect:"restartSvc",builtIn:true},
+ {id:"x3",name:"Reboot device",lang:"Built-in action",cat:"Maintenance",effect:"reboot",builtIn:true},
+ {id:"x4",name:"Flush DNS cache",lang:"Batch",cat:"Network",effect:"flushDns",builtIn:true},
+ {id:"x5",name:"Collect hardware inventory",lang:"PowerShell",cat:"Inventory",effect:"inventory",builtIn:true},
+ {id:"x6",name:"Start Defender service",lang:"PowerShell",cat:"Security",effect:"startAV",builtIn:true}]}
+let S=load()||fresh();
+function save(){try{localStorage.setItem("rmmlab-v1",JSON.stringify(S))}catch(e){}}
+function load(){try{const r=localStorage.getItem("rmmlab-v1");return r?Object.assign(fresh(),JSON.parse(r)):null}catch(e){return null}}
+const uid=p=>p+(S.seq++);
+const byId=(a,id)=>a.find(x=>x.id===id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const tip=k=>`<span class="tip-ic" data-tip="${k}">?</span>`;
+function rnd(){S.seed=(S.seed*1103515245+12345)%2147483648;return S.seed/2147483648}
+function clockStr(h=S.clock){const d=Math.floor(h/24)+1,hh=h%24;return`Day ${d} · ${String(hh).padStart(2,"0")}:00`}
+function log(msg,lvl="info"){S.log.unshift({t:clockStr(),msg,lvl});S.log=S.log.slice(0,250)}
+
+/* ===================== POLICY RESOLUTION ===================== */
+function polChain(id){const out=[];let p=byId(S.policies,id),g=0;while(p&&g<10){out.unshift(p);p=byId(S.policies,p.parentId);g++}return out}
+function eff(id){const ch=polChain(id);const e={conds:[],autos:[],patch:null,sw:null,av:null,backup:null,name:ch.length?ch[ch.length-1].name:"(none)"};
+ ch.forEach(p=>{e.conds=e.conds.concat(p.conds);e.autos=e.autos.concat(p.autos);["patch","sw","av","backup"].forEach(k=>{if(p[k]!==null&&p[k]!==undefined)e[k]=p[k]})});
+ if(!e.patch)e.patch={enabled:false};if(!e.sw)e.sw={install:[],tpp:[]};if(e.av===null)e.av=false;if(!e.backup)e.backup={enabled:false};return e}
+function devPolicyId(d){if(d.override)return d.override;const o=byId(S.orgs,d.orgId);return o&&o.map[d.role]}
+function devEff(d){return eff(devPolicyId(d))}
+function newPolicy(name,role,parentId=null){return{id:uid("p"),name,role,parentId,conds:[],autos:[],
+ patch:parentId?null:{enabled:false,scanHour:1,applyHour:2,rules:{Critical:"Approve",Important:"Approve",Moderate:"Manual",Low:"Manual"},ai:false,reboot:"Prompt user"},
+ sw:parentId?null:{install:[],tpp:[]},av:parentId?null:false,backup:parentId?null:{enabled:false,type:"Image",dest:"Cloud",hour:22}}}
+
+/* ===================== SIM ENGINE ===================== */
+function condTrue(c,d){switch(c.kind){
+ case"disk":return d.online&&d.disk>=c.th;case"cpu":return d.online&&d.cpu>=c.th;case"offline":return!d.online;
+ case"svc":return d.online&&d.role.startsWith("Windows")&&d.spooler==="stopped";case"reboot":return d.online&&d.pendingReboot;
+ case"avoff":return d.online&&devEff(d).av&&d.av!=="running";case"bkfail":return devEff(d).backup.enabled&&d.backup.status==="failed";
+ case"compound":return d.online&&d.disk>=c.th&&d.pendingReboot}return false}
+function condLabel(c){return CONDS[c.kind].replace("%",c.th!=null?c.th+"%":"")}
+function runScript(sid,d,why){const s=byId(S.scripts,sid);if(!s)return;if(!d.online){log(`${s.name} queued — ${d.name} is offline`,"warn");return}
+ switch(s.effect){case"cleanDisk":{const b=d.disk;d.disk=Math.max(35,d.disk-15);log(`${s.name} on ${d.name}: disk ${b}% → ${d.disk}%${why?" ("+why+")":""}`,"ok");break}
+ case"restartSvc":if(d.spooler==="stopped"){d.spooler="running";log(`${s.name} on ${d.name}: service started${why?" ("+why+")":""}`,"ok")}else log(`${s.name} on ${d.name}: service already running`);break;
+ case"reboot":d.pendingReboot=false;d.cpu=12;if(d.spooler==="stopped")d.spooler="running";log(`${d.name} rebooted${why?" ("+why+")":""}`,"ok");break;
+ case"startAV":if(devEff(d).av){d.av="running";log(`${s.name} on ${d.name}: AV running`,"ok")}else log(`${d.name}: no AV deployed by policy`,"warn");break;
+ default:log(`${s.name} completed on ${d.name}${why?" ("+why+")":""}`,"ok")}}
+function evaluate(fromTick){
+ for(const d of S.devices){const e=devEff(d);
+  for(const c of e.conds){const key=d.id+"|"+c.id;let a=S.alerts.find(x=>x.key===key&&x.status==="active");const on=condTrue(c,d);
+   if(on&&!a){a={id:uid("a"),key,devId:d.id,condId:c.id,sev:c.sev,msg:condLabel(c),status:"active",time:S.clock,ticketId:null};S.alerts.push(a);
+    log(`ALERT [${c.sev}] ${d.name}: ${a.msg}`,c.sev==="Critical"||c.sev==="Major"?"bad":"warn");
+    if(c.ticket){const t=mkTicket(`${d.name}: ${a.msg}`,d.orgId,d.id,c.sev==="Critical"?"P1":c.sev==="Major"?"P2":c.sev==="Moderate"?"P3":"P4","Alert");a.ticketId=t.id}
+    if(c.notify)log(`Notification sent to on-call technician for ${d.name}`);
+    if(c.script){runScript(c.script,d,"auto-remediation");if(!condTrue(c,d)){a.status="reset";a.auto=true;S.flags.autoRemed=true;log(`Alert auto-reset on ${d.name}: remediation succeeded`,"ok");
+     if(a.ticketId){const t=byId(S.tickets,a.ticketId);t.status="Resolved";t.notes.push({t:clockStr(),by:"Automation",txt:"Auto-remediated by condition action."});t.resolvedAt=S.clock}}}}
+   else if(!on&&a){a.status="reset";log(`Alert cleared: ${d.name} — ${a.msg}`,"ok")}}}
+ S.alerts=S.alerts.filter(a=>a.status==="active"||S.clock-a.time<72).slice(-300)}
+function mkTicket(title,orgId,devId,pri,src){const t={id:uid("t"),num:S.tnum++,title,orgId,devId,pri,status:"Open",assignee:"Unassigned",created:S.clock,notes:[],source:src};S.tickets.push(t);log(`Ticket #${t.num} created (${pri}): ${title}`);return t}
+function hourTick(){S.clock++;const h=S.clock%24;
+ for(const d of S.devices){const e=devEff(d);
+  if(d.online){if(rnd()<.12)d.disk=Math.min(99,d.disk+1+Math.floor(rnd()*3));d.cpu=rnd()<.03?96:Math.round(8+rnd()*45);
+   if(d.role==="Windows Workstation"&&d.spooler==="running"&&rnd()<.006)d.spooler="stopped";
+   if(d.role!=="Windows Server"&&d.role!=="Linux Server"&&rnd()<.004){d.online=false;d.offSince=S.clock}}
+  else if(!d.pinnedOff&&rnd()<.25)d.online=true;
+  if(!d.online)continue;
+  // software & AV
+  e.sw.install.forEach(a=>{if(!d.apps.includes(a)){d.apps.push(a);log(`Installed ${a} on ${d.name} (policy)`,"ok")}});
+  e.sw.tpp.forEach(a=>{if(d.outdated.includes(a)){d.outdated=d.outdated.filter(x=>x!==a);log(`Updated ${a} on ${d.name} (third-party patching)`,"ok")}});
+  if(e.av&&d.av==="none"){d.av="running";log(`Antivirus deployed to ${d.name}`,"ok")}
+  // scheduled automations
+  e.autos.forEach(a=>{if(a.sched==="Hourly"||(a.sched==="Daily 03:00"&&h===3))runScript(a.script,d,"scheduled")});
+  // patching
+  if(e.patch.enabled&&d.role.startsWith("Windows")){if(h===e.patch.scanHour)scanDev(d,e);if(h===e.patch.applyHour)applyDev(d,e)}
+  // backup
+  if(e.backup.enabled&&h===e.backup.hour){d.backup={status:"success",last:S.clock,type:e.backup.type,dest:e.backup.dest};log(`Backup (${e.backup.type} → ${e.backup.dest}) succeeded on ${d.name}`,"ok")}}
+ for(const d of S.devices){const e=devEff(d);if(e.backup.enabled&&!d.online&&h===e.backup.hour){d.backup={...d.backup,status:"failed"};log(`Backup FAILED on ${d.name}: device offline`,"bad")}}
+ evaluate(true)}
+function scanDev(d,e){let n=0;d.patches.forEach(p=>{if(p.state==="new"){n++;if(p.flagged&&e.patch.ai)p.state="held";else{const r=e.patch.rules[p.sev];p.state=r==="Approve"?"approved":r==="Reject"?"rejected":"available"}}});
+ if(n)log(`Patch scan on ${d.name}: ${n} new patch(es) evaluated`)}
+function applyDev(d,e){const ap=d.patches.filter(p=>p.state==="approved");if(!ap.length)return;ap.forEach(p=>{p.state="installed";if(p.flagged){S.flags.flaggedInstalled=true}});
+ if(ap.some(p=>p.flagged)&&rnd()<.9)log(`${d.name}: installed AI-flagged ${ap.find(p=>p.flagged).kb} — users report app crashes after update`,"bad");
+ const rb=(e.patch.reboot||"Prompt user");if(rb==="Automatic"){d.pendingReboot=false;log(`${d.name}: ${ap.length} patch(es) installed, rebooted in maintenance window`,"ok")}else{d.pendingReboot=true;log(`${d.name}: ${ap.length} patch(es) installed, reboot pending (${rb})`,"ok")}}
+function compliant(d){return!d.patches.some(p=>["new","available","approved"].includes(p.state)&&(p.sev==="Critical"||p.sev==="Important"))}
+function compliancePct(list){const w=list.filter(d=>d.role.startsWith("Windows"));return w.length?Math.round(w.filter(compliant).length/w.length*100):100}
+
+/* ===================== SAMPLE ===================== */
+function mkDev(name,orgId,locId,role,user,o={}){return Object.assign({id:uid("d"),name,orgId,locId,role,user,online:true,disk:40+Math.floor(rnd()*30),cpu:15,spooler:"running",pendingReboot:false,
+ patches:[],apps:role.startsWith("Windows")?["Microsoft 365 Apps"]:[],outdated:role==="Windows Workstation"?["Google Chrome"]:[],av:"none",backup:{status:"none",last:null},override:null,
+ os:{"Windows Workstation":"Windows 11 Pro 24H2","Windows Server":"Windows Server 2022","macOS":"macOS 15 Sequoia","Linux Server":"Ubuntu 24.04 LTS"}[role]},o)}
+function loadSample(){S=fresh();
+ const pw=newPolicy("Windows Workstations – Standard","Windows Workstation"),ps=newPolicy("Windows Servers – Standard","Windows Server"),pm=newPolicy("macOS – Standard","macOS"),pl=newPolicy("Linux Servers – Standard","Linux Server");
+ pw.conds.push({id:uid("c"),kind:"offline",th:null,sev:"Minor",ticket:false,notify:false,script:""});pw.sw.install=["Microsoft 365 Apps"];
+ ps.conds.push({id:uid("c"),kind:"offline",th:null,sev:"Critical",ticket:true,notify:true,script:""},{id:uid("c"),kind:"disk",th:90,sev:"Major",ticket:true,notify:false,script:""});
+ const pc=newPolicy("Workstations – Law Firm (child)","Windows Workstation",pw.id);pc.conds.push({id:uid("c"),kind:"cpu",th:95,sev:"Moderate",ticket:false,notify:false,script:""});
+ S.policies.push(pw,ps,pm,pl,pc);
+ const o1={id:uid("o"),name:"Hill Country Law",map:{"Windows Workstation":pc.id,"Windows Server":ps.id,"macOS":pm.id,"Linux Server":pl.id}};
+ const o2={id:uid("o"),name:"Bluebonnet Family Clinic",map:{"Windows Workstation":pw.id,"Windows Server":ps.id,"macOS":pm.id,"Linux Server":pl.id}};
+ S.orgs.push(o1,o2);const l1={id:uid("l"),orgId:o1.id,name:"Austin Office"},l1r={id:uid("l"),orgId:o1.id,name:"Remote"},l2={id:uid("l"),orgId:o2.id,name:"Round Rock Clinic"};S.locs.push(l1,l1r,l2);
+ ["mgarza","tnguyen","rpatel","kwilson","jmorales"].forEach((u,i)=>S.devices.push(mkDev(`HCL-WS${String(i+1).padStart(2,"0")}`,o1.id,i<4?l1.id:l1r.id,"Windows Workstation",u)));
+ S.devices.push(mkDev("HCL-SRV01",o1.id,l1.id,"Windows Server","svc-files"));
+ ["dr.lee","frontdesk","nurse1"].forEach((u,i)=>S.devices.push(mkDev(`BBC-WS${String(i+1).padStart(2,"0")}`,o2.id,l2.id,"Windows Workstation",u)));
+ S.devices.push(mkDev("BBC-MAC01",o2.id,l2.id,"macOS","office.mgr"),mkDev("BBC-SRV01",o2.id,l2.id,"Windows Server","svc-ehr"),mkDev("BBC-LNX01",o2.id,l2.id,"Linux Server","pacs"));
+ S.docs.push({id:uid("k"),orgId:o1.id,type:"Apps & Services",title:"Clio practice management",detail:"Cloud SaaS; SSO via Microsoft 365"},{id:uid("k"),orgId:o2.id,type:"Knowledge base",title:"EHR server restart procedure",detail:"Notify front desk, stop EHR service, reboot, verify login"});
+ log("Sample MSP loaded: 2 organizations, 12 devices, 5 policies (one child policy).","ok");evaluate()}
+
+/* ===================== SCENARIOS ===================== */
+const sampleOrgs=["Hill Country Law","Bluebonnet Family Clinic"];
+const wsPolicies=()=>S.policies.filter(p=>p.role==="Windows Workstation");
+const workstations=()=>S.devices.filter(d=>d.role==="Windows Workstation");
+const servers=()=>S.devices.filter(d=>d.role==="Windows Server"||d.role==="Linux Server");
+const SCN=[
+ {id:"s1",title:"Onboard a new client",lvl:"Beginner",desc:"You just signed Lone Star Dental (two offices). Set them up so devices land in the right place with the right policies, and document the essentials.",
+  setup(){},obj:[
+  ["Create a new organization",()=>newOrgs().length>0,"Organizations → Add organization"],
+  ["Give it at least 2 locations",()=>newOrgs().some(o=>S.locs.filter(l=>l.orgId===o.id).length>=2),"Organizations → + Location"],
+  ["Map policies for Windows Workstation and Windows Server",()=>newOrgs().some(o=>o.map["Windows Workstation"]&&o.map["Windows Server"]),"Set when creating, or Edit policy mapping"],
+  ["Deploy agents to 3+ devices in the new org",()=>newOrgs().some(o=>S.devices.filter(d=>d.orgId===o.id).length>=3),"Organizations → Deploy agents"],
+  ["Store a credential in the new org's documentation",()=>newOrgs().some(o=>S.docs.some(k=>k.orgId===o.id&&k.type==="Credential")),"Organizations → Documentation → Add"],
+  ["Document one of their apps & services",()=>newOrgs().some(o=>S.docs.some(k=>k.orgId===o.id&&k.type==="Apps & Services")),"Documentation type: Apps & Services"]]},
+ {id:"s2",title:"Patch Tuesday",lvl:"Intermediate",desc:"Microsoft's monthly release just dropped, and the community is reporting a buggy preview update. Get every Windows device compliant without installing the unstable patch.",
+  setup(){},obj:[
+  ["Enable OS patching on the workstation and server policies",()=>{const w=byId(S.policies,S.policies.find(p=>p.role==="Windows Workstation"&&!p.parentId).id),s=S.policies.find(p=>p.role==="Windows Server"&&!p.parentId);return w.patch.enabled&&s.patch.enabled},"Policies → Patching tab"],
+  ["Auto-approve Critical and Important",()=>S.policies.filter(p=>!p.parentId&&p.role.startsWith("Windows")).every(p=>p.patch.rules.Critical==="Approve"&&p.patch.rules.Important==="Approve"),"Patching tab → approval rules"],
+  ["Hold AI-flagged patches",()=>S.policies.filter(p=>!p.parentId&&p.role.startsWith("Windows")).every(p=>p.patch.ai),"Patching tab → Patch Intelligence AI"],
+  ["Release Patch Tuesday",()=>!!S.flags.ptues,"Patching page → Release Patch Tuesday"],
+  ["Windows patch compliance at 100%",()=>S.flags.ptues&&compliancePct(S.devices)===100,"Advance the clock past the scan and install hours (or use Scan / Install now)"],
+  ["The AI-flagged patch is not installed anywhere",()=>S.flags.ptues&&!S.devices.some(d=>d.patches.some(p=>p.flagged&&p.state==="installed")),"Leave it held or reject it"]]},
+ {id:"s3",title:"Self-healing disk alerts",lvl:"Intermediate",desc:"HCL-WS03 keeps filling its disk and the techs are tired of cleaning it by hand. Build a condition that fixes it automatically, opens a ticket for the record, and add weekly maintenance.",
+  setup(){const d=S.devices.find(x=>x.name==="HCL-WS03");d.disk=94},obj:[
+  ["A disk condition (≥ 90%) on a workstation policy",()=>wsPolicies().some(p=>p.conds.some(c=>c.kind==="disk"&&c.th<=90&&c.th>=80)),"Policies → workstation policy → Conditions → Add"],
+  ["…that runs 'Clean temp files' automatically",()=>wsPolicies().some(p=>p.conds.some(c=>c.kind==="disk"&&c.script==="x1")),"Condition → Run automation"],
+  ["…and creates a ticket",()=>wsPolicies().some(p=>p.conds.some(c=>c.kind==="disk"&&c.ticket)),"Condition → Create ticket"],
+  ["An alert was auto-remediated",()=>!!S.flags.autoRemed,"Advance the clock 1 hour"],
+  ["A scheduled daily cleanup automation on a workstation policy",()=>wsPolicies().some(p=>p.autos.some(a=>a.script==="x1")),"Policies → Scheduled automations"],
+  ["HCL-WS03 disk below 85%",()=>{const d=S.devices.find(x=>x.name==="HCL-WS03");return d&&d.disk<85},"Check the device page"]]},
+ {id:"s4",title:"Service desk triage",lvl:"Beginner",desc:"Monday morning: four tickets in the queue, one of them urgent. Assign, prioritize, fix the printer problem remotely and stay within SLA.",
+  setup(){const d=S.devices.find(x=>x.name==="BBC-WS02");d.spooler="stopped";const o2=d.orgId,o1=S.orgs[0].id;
+   mkTicket("Front desk can't print patient forms",o2,d.id,"P1","Phone");mkTicket("HCL-WS02 very slow since Friday",o1,S.devices.find(x=>x.name==="HCL-WS02").id,"P2","Email");
+   mkTicket("New paralegal starting Wednesday — set up laptop",o1,null,"P3","Email");mkTicket("Request: second monitor for dr.lee",o2,null,"P4","Portal")},obj:[
+  ["Assign every open ticket to a technician",()=>S.tickets.filter(t=>t.status!=="Resolved").every(t=>t.assignee!=="Unassigned")&&S.tickets.length>0,"Ticketing → open a ticket → Assignee"],
+  ["Restart Print Spooler on BBC-WS02 from a remote session",()=>!!S.flags.remoteFix,"Devices → BBC-WS02 → Remote session → Services"],
+  ["Add a technician note to the printing ticket",()=>S.tickets.some(t=>t.pri==="P1"&&t.notes.some(n=>n.by!=="Automation")),"Open the ticket → Add note"],
+  ["Resolve the P1 within its 4-hour SLA",()=>S.tickets.some(t=>t.pri==="P1"&&t.status==="Resolved"&&t.resolvedAt-t.created<=SLA.P1),"Set status Resolved before the timer runs out"],
+  ["No tickets in SLA breach",()=>!S.tickets.some(breach),"Keep working the queue"]]},
+ {id:"s5",title:"Standardize software & protection",lvl:"Intermediate",desc:"The clinic's cyber-insurance questionnaire asks for standard software, patched browsers and antivirus on every workstation.",
+  setup(){},obj:[
+  ["Install Google Chrome and 7-Zip via the standard workstation policy",()=>{const p=S.policies.find(x=>x.role==="Windows Workstation"&&!x.parentId);return["Google Chrome","7-Zip"].every(a=>p.sw.install.includes(a))},"Policies → Software tab"],
+  ["Enable third-party patching for Google Chrome",()=>wsPolicies().some(p=>p.sw&&p.sw.tpp.includes("Google Chrome")),"Software tab → Third-party patching"],
+  ["Enable antivirus on the workstation policy",()=>wsPolicies().some(p=>p.av===true),"Policies → Security tab"],
+  ["Add an 'Antivirus not running' condition",()=>wsPolicies().some(p=>p.conds.some(c=>c.kind==="avoff")),"Conditions → Add"],
+  ["Every workstation has Chrome (up to date) and 7-Zip",()=>workstations().every(d=>d.apps.includes("Google Chrome")&&d.apps.includes("7-Zip")&&!d.outdated.includes("Google Chrome")),"Advance the clock (offline devices catch up when back)"],
+  ["Every workstation's antivirus is running",()=>workstations().every(d=>d.av==="running"),"Advance the clock"]]},
+ {id:"s6",title:"Server backup & recovery",lvl:"Advanced",desc:"Both clients' servers have no backups. Protect them, alert on failures, and prove recovery works.",
+  setup(){},obj:[
+  ["Enable Image backup on the Windows server policy",()=>{const p=S.policies.find(x=>x.role==="Windows Server"&&!x.parentId);return p.backup.enabled&&p.backup.type==="Image"},"Policies → Backup tab"],
+  ["Use Hybrid destination (local + cloud)",()=>S.policies.some(p=>p.role==="Windows Server"&&p.backup&&p.backup.dest==="Hybrid"),"Backup tab → Destination"],
+  ["Enable backup on the Linux server policy",()=>S.policies.some(p=>p.role==="Linux Server"&&p.backup&&p.backup.enabled),"Policies → Linux policy → Backup"],
+  ["Add a 'Backup failed' condition that creates a ticket",()=>S.policies.some(p=>p.conds.some(c=>c.kind==="bkfail"&&c.ticket)),"Conditions → Add"],
+  ["Every server has a successful backup",()=>servers().every(d=>d.backup.status==="success"),"Advance the clock past the backup hour"],
+  ["Complete a restore test",()=>!!S.flags.restoreTested,"Backup page → Test restore"]]}
+];
+function newOrgs(){return S.orgs.filter(o=>!sampleOrgs.includes(o.name))}
+function breach(t){return t.status!=="Resolved"&&S.clock-t.created>SLA[t.pri]}
+function scnState(){if(!S.scenario)return null;const s=SCN.find(x=>x.id===S.scenario.id);const res=s.obj.map(o=>!!o[1]());return{s,res,done:res.filter(Boolean).length}}
+
+/* ===================== ACTIONS ===================== */
+const A={
+ tab(v){S.tab=v},logtoggle(){document.getElementById("log").classList.toggle("min")},
+ tick(v){for(let i=0;i<+v;i++)hourTick();log(`Clock advanced ${v}h`)},
+ reset(){confirmBox("Reset the lab? Everything will be cleared.",()=>{S=fresh();log("Lab reset","warn");commit()})},
+ sample(){confirmBox("Load the sample MSP? This replaces the current lab.",()=>{loadSample();commit()})},
+ startScn(id){confirmBox("Starting a scenario loads a fresh sample MSP. Continue?",()=>{loadSample();const s=SCN.find(x=>x.id===id);s.setup();evaluate();S.scenario={id,start:S.clock};S.tab="scn";log(`Scenario started: ${s.title}`,"ok");commit()})},
+ stopScn(){S.scenario=null;log("Scenario ended","warn")},
+ /* orgs */
+ addOrg(){if(!S.policies.length)return toast("Load the sample MSP or create policies first.");form("Add organization",[{k:"name",label:"Organization name",tip:"org",value:"Lone Star Dental"},
+  ...ROLES.map(r=>({k:r,label:`Policy for ${r}`,tip:"policy",type:"select",options:[["","(none)"]].concat(S.policies.filter(p=>p.role===r).map(p=>[p.id,p.name])),value:(S.policies.find(p=>p.role===r&&!p.parentId)||{}).id})),
+  {k:"loc",label:"First location",tip:"location",value:"Main Office"}],f=>{if(!f.name)return"Name required";if(S.orgs.some(o=>o.name===f.name))return"Already exists";
+  const map={};ROLES.forEach(r=>map[r]=f[r]||null);const o={id:uid("o"),name:f.name,map};S.orgs.push(o);S.locs.push({id:uid("l"),orgId:o.id,name:f.loc||"Main Office"});log(`Organization ${o.name} created`,"ok")})},
+ editMap(id){const o=byId(S.orgs,id);form(`Policy mapping — ${o.name}`,ROLES.map(r=>({k:r,label:r,tip:"role",type:"select",options:[["","(none)"]].concat(S.policies.filter(p=>p.role===r).map(p=>[p.id,p.name])),value:o.map[r]||""})),f=>{ROLES.forEach(r=>o.map[r]=f[r]||null);log(`${o.name}: policy mapping updated`,"ok");evaluate()})},
+ addLoc(id){const o=byId(S.orgs,id);form(`Add location — ${o.name}`,[{k:"n",label:"Location name",tip:"location",value:"Branch"}],f=>{S.locs.push({id:uid("l"),orgId:id,name:f.n});log(`Location ${f.n} added to ${o.name}`,"ok")})},
+ deploy(id){const o=byId(S.orgs,id);const locs=S.locs.filter(l=>l.orgId===id);if(!locs.length)return toast("Add a location first.");
+  const pre=o.name.split(/\s+/).map(w=>w[0]).join("").toUpperCase().slice(0,4);
+  form(`Generate installer & deploy — ${o.name}`,[{k:"loc",label:"Location",tip:"installer",type:"select",options:locs.map(l=>[l.id,l.name])},{k:"role",label:"Device role",tip:"role",type:"select",options:ROLES},
+   {k:"n",label:"How many devices",type:"number",value:3},{k:"pre",label:"Name prefix",value:pre+"-WS"}],f=>{const n=Math.min(25,Math.max(1,+f.n||1));if(!o.map[f.role])return`No policy mapped for ${f.role} in this org. Edit the policy mapping first.`;
+   for(let i=0;i<n;i++){let k=1,nm;do{nm=`${f.pre}${String(k).padStart(2,"0")}`;k++}while(S.devices.some(d=>d.name===nm));S.devices.push(mkDev(nm,id,f.loc,f.role,"user"+k))}
+   log(`${n} agent(s) installed at ${o.name} / ${byId(S.locs,f.loc).name}; policy "${byId(S.policies,o.map[f.role]).name}" applied`,"ok");evaluate()})},
+ addDoc(id){form(`Add documentation — ${byId(S.orgs,id).name}`,[{k:"type",label:"Type",tip:"docs",type:"select",options:["Credential","Apps & Services","Network","Knowledge base"]},{k:"title",label:"Title",value:"Domain admin (break-glass)"},{k:"detail",label:"Detail / secret",value:""}],f=>{
+  if(!f.title)return"Title required";S.docs.push({id:uid("k"),orgId:id,type:f.type,title:f.title,detail:f.detail,shown:false});log(`Documentation added: ${f.type} — ${f.title}`,"ok")})},
+ revealDoc(id){const k=byId(S.docs,id);k.shown=!k.shown;if(k.shown)log(`Credential viewed: ${k.title} (audit logged)`)},
+ delDoc(id){S.docs=S.docs.filter(k=>k.id!==id)},
+ delOrg(id){if(S.devices.some(d=>d.orgId===id))return toast("Remove the organization's devices first.");S.orgs=S.orgs.filter(o=>o.id!==id);S.locs=S.locs.filter(l=>l.orgId!==id)},
+ /* devices */
+ selDev(id){S.sel=id;S.dtab=S.dtab||"overview"},dtab(v){S.dtab=v},closeDev(){S.sel=null},
+ devScript(id){const d=byId(S.devices,id);form(`Run automation on ${d.name}`,[{k:"s",label:"Automation",tip:"lib",type:"select",options:S.scripts.map(s=>[s.id,`${s.name} (${s.lang})`])}],f=>{runScript(f.s,d,"manual");evaluate()})},
+ devReboot(id){runScript("x3",byId(S.devices,id),"manual");evaluate()},
+ devWake(id){const d=byId(S.devices,id);d.online=true;d.pinnedOff=false;log(`${d.name} back online (user powered on)`,"ok");evaluate()},
+ devOverride(id){const d=byId(S.devices,id);form(`Policy override — ${d.name}`,[{k:"p",label:"Policy",tip:"inherit",type:"select",options:[["","(use organization mapping)"]].concat(S.policies.filter(p=>p.role===d.role).map(p=>[p.id,p.name])),value:d.override||""}],f=>{d.override=f.p||null;log(`${d.name}: policy ${d.override?"overridden":"reset to org mapping"}`,"ok");evaluate()})},
+ devRemove(id){const d=byId(S.devices,id);confirmBox(`Uninstall the agent and remove ${d.name}?`,()=>{S.devices=S.devices.filter(x=>x.id!==id);S.alerts=S.alerts.filter(a=>a.devId!==id);S.sel=null;log(`${d.name} removed (agent uninstalled)`,"warn");commit()})},
+ remote(id){openRemote(id)},
+ /* policies */
+ selPol(id){S.polSel=id},ptab(v){S.ptab=v},
+ addPol(){form("New agent policy",[{k:"n",label:"Policy name",tip:"policy",value:"New policy"},{k:"role",label:"Device role",tip:"role",type:"select",options:ROLES},
+  {k:"parent",label:"Parent policy (optional)",tip:"inherit",type:"select",options:[["","(none — standalone)"]].concat(S.policies.map(p=>[p.id,`${p.name} [${p.role}]`]))}],f=>{
+  if(f.parent&&byId(S.policies,f.parent).role!==f.role)return"Parent must be for the same device role.";const p=newPolicy(f.n,f.role,f.parent||null);S.policies.push(p);S.polSel=p.id;log(`Policy "${p.name}" created${f.parent?" (inherits)":""}`,"ok")})},
+ delPol(id){if(S.orgs.some(o=>Object.values(o.map).includes(id))||S.policies.some(p=>p.parentId===id)||S.devices.some(d=>d.override===id))return toast("Policy is in use (mapped, overridden or a parent).");S.policies=S.policies.filter(p=>p.id!==id);S.polSel=null},
+ addCond(pid){const p=byId(S.policies,pid);form(`Add condition — ${p.name}`,[{k:"kind",label:"Condition",tip:"cond",type:"select",options:Object.entries(CONDS)},{k:"th",label:"Threshold % (disk, CPU, compound)",type:"number",value:90},
+  {k:"sev",label:"Severity",tip:"sev",type:"select",options:SEVS,value:"Major"},{k:"ticket",label:"Create ticket",tip:"ticket",type:"checkbox",value:true},{k:"notify",label:"Notify technicians",type:"checkbox",value:false},
+  {k:"script",label:"Run automation (self-heal)",tip:"remed",type:"select",options:[["","(none)"]].concat(S.scripts.map(s=>[s.id,s.name]))}],f=>{
+  const needsTh=["disk","cpu","compound"].includes(f.kind);const th=needsTh?Math.max(1,Math.min(100,+f.th)):null;
+  p.conds.push({id:uid("c"),kind:f.kind,th,sev:f.sev,ticket:f.ticket,notify:f.notify,script:f.script});log(`${p.name}: condition added — ${CONDS[f.kind].replace("%",th?th+"%":"")}`,"ok");evaluate()})},
+ delCond(pid,cid){const p=byId(S.policies,pid);p.conds=p.conds.filter(c=>c.id!==cid);S.alerts.forEach(a=>{if(a.condId===cid)a.status="reset"})},
+ addAuto(pid){const p=byId(S.policies,pid);form(`Add scheduled automation — ${p.name}`,[{k:"s",label:"Automation",tip:"lib",type:"select",options:S.scripts.map(s=>[s.id,s.name])},{k:"sched",label:"Schedule",tip:"auto",type:"select",options:["Daily 03:00","Hourly"]}],f=>{
+  p.autos.push({id:uid("u"),script:f.s,sched:f.sched});log(`${p.name}: scheduled ${byId(S.scripts,f.s).name} (${f.sched})`,"ok")})},
+ delAuto(pid,aid){const p=byId(S.policies,pid);p.autos=p.autos.filter(a=>a.id!==aid)},
+ ownSetting(pid,k){const p=byId(S.policies,pid);const e=eff(p.parentId);p[k]=JSON.parse(JSON.stringify(e[k]));log(`${p.name}: now overriding ${k} settings`)},
+ inheritSetting(pid,k){byId(S.policies,pid)[k]=null},
+ patchOn(pid){const p=byId(S.policies,pid);p.patch.enabled=!p.patch.enabled;log(`${p.name}: OS patching ${p.patch.enabled?"enabled":"disabled"}`,p.patch.enabled?"ok":"warn")},
+ patchAI(pid){const p=byId(S.policies,pid);p.patch.ai=!p.patch.ai;log(`${p.name}: hold AI-flagged patches ${p.patch.ai?"on":"off"}`)},
+ patchEdit(pid){const p=byId(S.policies,pid),pt=p.patch;form(`Patch settings — ${p.name}`,[{k:"scan",label:"Scan hour (0–23)",tip:"window",type:"number",value:pt.scanHour},{k:"apply",label:"Install hour (0–23)",tip:"window",type:"number",value:pt.applyHour},
+  ...PSEV.map(s=>({k:s,label:`${s} patches`,tip:"approve",type:"select",options:["Approve","Manual","Reject"],value:pt.rules[s]})),{k:"reboot",label:"Reboot behavior",tip:"reboot",type:"select",options:["Automatic","Prompt user","Never"],value:pt.reboot}],f=>{
+  pt.scanHour=Math.abs(+f.scan)%24;pt.applyHour=Math.abs(+f.apply)%24;PSEV.forEach(s=>pt.rules[s]=f[s]);pt.reboot=f.reboot;log(`${p.name}: patch settings saved`,"ok")})},
+ swEdit(pid){const p=byId(S.policies,pid);form(`Software — ${p.name}`,[{k:"install",label:"Install on all devices",tip:"swdeploy",type:"checks",options:APPS.map(a=>[a,a]),value:p.sw.install},{k:"tpp",label:"Third-party patching",tip:"tpp",type:"checks",options:APPS.map(a=>[a,a]),value:p.sw.tpp}],f=>{p.sw.install=f.install;p.sw.tpp=f.tpp;log(`${p.name}: software settings saved`,"ok")})},
+ avOn(pid){const p=byId(S.policies,pid);p.av=!p.av;log(`${p.name}: antivirus ${p.av?"enabled":"disabled"}`,p.av?"ok":"warn")},
+ bkEdit(pid){const p=byId(S.policies,pid),b=p.backup;form(`Backup — ${p.name}`,[{k:"en",label:"Enable backup",tip:"backup",type:"checkbox",value:b.enabled},{k:"type",label:"Type",type:"select",options:["Image","File & Folder"],value:b.type},{k:"dest",label:"Destination",type:"select",options:["Cloud","Local","Hybrid"],value:b.dest},{k:"hour",label:"Daily at hour (0–23)",type:"number",value:b.hour}],f=>{
+  Object.assign(b,{enabled:f.en,type:f.type,dest:f.dest,hour:Math.abs(+f.hour)%24});log(`${p.name}: backup ${b.enabled?`${b.type} → ${b.dest} daily ${b.hour}:00`:"disabled"}`,"ok")})},
+ /* library */
+ addScript(){form("Add script to Automation Library",[{k:"n",label:"Name",value:"Clear Teams cache"},{k:"lang",label:"Language",tip:"lib",type:"select",options:["PowerShell","Batch","ShellScript","Python","VBScript"]},{k:"cat",label:"Category",type:"select",options:["Maintenance","Remediation","Software","Network","Security","Inventory"]},
+  {k:"eff",label:"Simulated effect",type:"select",options:Object.entries(EFFECTS)},{k:"code",label:"Script body (stored for reference)",type:"textarea",value:"# Write-Output 'hello'"}],f=>{S.scripts.push({id:uid("x"),name:f.n,lang:f.lang,cat:f.cat,effect:f.eff,code:f.code});log(`Automation Library: added "${f.n}"`,"ok")})},
+ delScript(id){if(S.policies.some(p=>p.conds.some(c=>c.script===id)||p.autos.some(a=>a.script===id)))return toast("Script is used by a policy.");S.scripts=S.scripts.filter(s=>s.id!==id)},
+ /* patching */
+ ptues(){if(!S.devices.some(d=>d.role.startsWith("Windows")))return toast("No Windows devices.");const m=S.flags.ptuesN=(S.flags.ptuesN||0)+1;const base=5050000+m*10;
+  S.devices.filter(d=>d.role.startsWith("Windows")).forEach(d=>{const srv=d.role==="Windows Server";
+   d.patches.push({id:uid("k"),kb:"KB"+(base+1),title:`${srv?"Server 2022":"Windows 11"} Cumulative Update`,sev:"Critical",state:"new"},{id:uid("k"),kb:"KB"+(base+2),title:".NET Framework Security Update",sev:"Important",state:"new"},
+    {id:uid("k"),kb:"KB"+(base+3),title:"Defender platform update",sev:"Moderate",state:"new"},{id:uid("k"),kb:"KB"+(base+4),title:"Intel display driver",sev:"Low",state:"new"});
+   if(!srv)d.patches.push({id:uid("k"),kb:"KB"+(base+5),title:"Cumulative Update Preview (optional)",sev:"Important",state:"new",flagged:true})});
+  S.flags.ptues=true;log(`Patch Tuesday released: 4–5 updates per Windows device. AI flags KB${base+5} as unstable.`,"warn")},
+ scanAll(){let n=0;S.devices.forEach(d=>{const e=devEff(d);if(e.patch.enabled&&d.online&&d.role.startsWith("Windows")){scanDev(d,e);n++}});log(`On-demand patch scan run on ${n} device(s)`);if(!n)return toast("No online Windows devices with patching enabled in their policy.")},
+ applyAll(){let n=0;S.devices.forEach(d=>{const e=devEff(d);if(e.patch.enabled&&d.online&&d.role.startsWith("Windows")&&d.patches.some(p=>p.state==="approved")){applyDev(d,e);n++}});log(`Install-now run on ${n} device(s)`);evaluate();if(!n)return toast("Nothing approved to install (or devices offline / patching disabled).")},
+ approve(id){for(const d of S.devices){const p=d.patches.find(x=>x.id===id);if(p){p.state="approved";log(`${p.kb} manually approved on ${d.name}${p.flagged?" — warning: AI-flagged":""}`,p.flagged?"warn":"ok")}}},
+ reject(id){for(const d of S.devices){const p=d.patches.find(x=>x.id===id);if(p){p.state="rejected";log(`${p.kb} rejected on ${d.name}`)}}},
+ rejectKB(kb){S.devices.forEach(d=>d.patches.forEach(p=>{if(p.kb===kb&&p.state!=="installed")p.state="rejected"}));log(`${kb} rejected fleet-wide`,"ok")},
+ /* alerts & tickets */
+ resetAlert(id){const a=byId(S.alerts,id);a.status="reset";a.time=S.clock;log(`Alert manually reset: ${a.msg}`)},
+ alertTicket(id){const a=byId(S.alerts,id),d=byId(S.devices,a.devId);if(a.ticketId)return toast("Alert already has a ticket.");const t=mkTicket(`${d.name}: ${a.msg}`,d.orgId,d.id,a.sev==="Critical"?"P1":a.sev==="Major"?"P2":"P3","Alert");a.ticketId=t.id},
+ newTicket(){if(!S.orgs.length)return toast("Add an organization first.");form("New ticket",[{k:"title",label:"Subject",tip:"ticket",value:""},{k:"org",label:"Organization",type:"select",options:S.orgs.map(o=>[o.id,o.name])},{k:"pri",label:"Priority",tip:"sla",type:"select",options:["P1","P2","P3","P4"],value:"P3"}],f=>{if(!f.title)return"Subject required";mkTicket(f.title,f.org,null,f.pri,"Manual")})},
+ openTicket(id){openTicket(id)},
+ /* backup */
+ runBk(id){const d=byId(S.devices,id),e=devEff(d);if(!e.backup.enabled)return toast("Backup isn't enabled in this device's policy.");if(!d.online){d.backup={...d.backup,status:"failed"};log(`Backup FAILED on ${d.name}: offline`,"bad");evaluate();return}
+  d.backup={status:"success",last:S.clock,type:e.backup.type,dest:e.backup.dest};log(`Manual backup succeeded on ${d.name}`,"ok");evaluate()},
+ restoreTest(id){const d=byId(S.devices,id);if(d.backup.status!=="success")return toast("Needs a successful backup first.");S.flags.restoreTested=true;log(`Restore test: ${d.name} ${d.backup.type==="Image"?"image booted as a VM":"files restored to sandbox"} and verified`,"ok")}
+};
+
+/* ===================== RENDER ===================== */
+const TABS=[["dash","Dashboard"],["orgs","Organizations"],["devs","Devices"],["pols","Policies"],["lib","Automation Library"],["patch","Patching"],["alerts","Alerts"],["tix","Ticketing"],["bk","Backup"],["scn","Scenarios"]];
+function render(){document.getElementById("clock").textContent="🕒 "+clockStr();
+ const act=S.alerts.filter(a=>a.status==="active").length,open=S.tickets.filter(t=>t.status!=="Resolved").length;
+ document.getElementById("nav").innerHTML=TABS.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${S.tab===k?"on":""}"><span>${l}</span>${k==="alerts"&&act?`<span class="pill bad">${act}</span>`:k==="tix"&&open?`<span class="pill warn">${open}</span>`:k==="scn"&&S.scenario?'<span class="pill acc">live</span>':""}</button>`).join("");
+ const V={dash:vDash,orgs:vOrgs,devs:vDevs,pols:vPols,lib:vLib,patch:vPatch,alerts:vAlerts,tix:vTix,bk:vBk,scn:vScn}[S.tab]||vDash;
+ document.getElementById("main").innerHTML=`<div class="banner">Independent training simulation modeled on NinjaOne-style RMM workflows — not affiliated with NinjaOne. No real devices are managed.</div>`+scnBar()+V();
+ document.getElementById("logbd").innerHTML=S.log.map(l=>`<div class="lg-${l.lvl}">[${l.t}] ${esc(l.msg)}</div>`).join("")||'<div class="lg-info">No activity yet.</div>';
+ document.getElementById("logcount").textContent=S.log.length+" ▾"}
+function scnBar(){const st=scnState();if(!st)return"";if(st.done===st.res.length&&!S.scenario.done){S.scenario.done=true;S.scenario.end=S.clock;log(`SCENARIO COMPLETE: ${st.s.title}`,"ok")}
+ return`<div class="scbar row"><b>Scenario:</b> ${esc(st.s.title)} <span class="pill ${st.done===st.res.length?"ok":"acc"}">${st.done}/${st.res.length}</span><div class="spacer"></div><button class="sm" data-act="tab" data-v="scn">Checklist</button></div>`}
+const stat=(n,l,k)=>`<div class="card stat"><div class="n">${n}</div><div class="l">${l} ${k?tip(k):""}</div></div>`;
+const bar=p=>`<div class="bar"><i class="${p>=90?"crit":p>=75?"hot":""}" style="width:${Math.min(100,p)}%"></i></div>`;
+const orgName=id=>(byId(S.orgs,id)||{}).name||"—";const locName=id=>(byId(S.locs,id)||{}).name||"—";
+const devAlerts=d=>S.alerts.filter(a=>a.devId===d.id&&a.status==="active");
+const sevPill=s=>`<span class="pill ${s==="Critical"||s==="P1"?"bad":s==="Major"||s==="P2"?"warn":s==="Moderate"||s==="P3"?"acc":""}">${s}</span>`;
+
+function vDash(){const D=S.devices,on=D.filter(d=>d.online).length,act=S.alerts.filter(a=>a.status==="active");
+ const avc=D.length?Math.round(D.filter(d=>d.av==="running").length/D.length*100):0;const srv=servers();const bkc=srv.length?Math.round(srv.filter(d=>d.backup.status==="success").length/srv.length*100):0;
+ return`<h2>Dashboard ${tip("health")}</h2><p class="sub">Health across every organization you manage.</p>
+ <div class="grid g4" style="margin-bottom:12px">${stat(`${on}/${D.length}`,"Devices online","agent")}${stat(act.length,"Active alerts","alert")}${stat(S.tickets.filter(t=>t.status!=="Resolved").length,"Open tickets","ticket")}${stat(compliancePct(D)+"%","Patch compliance","compliance")}${stat(avc+"%","AV coverage","av")}${stat(bkc+"%","Server backups OK","backup")}</div>
+ <div class="grid g2"><div class="card"><h3>Organizations ${tip("org")}</h3>${S.orgs.length?`<table><tr><th>Organization</th><th>Devices</th><th>Alerts</th><th>Patch</th></tr>${S.orgs.map(o=>{const ds=D.filter(d=>d.orgId===o.id);return`<tr><td>${esc(o.name)}</td><td>${ds.filter(d=>d.online).length}/${ds.length}</td><td>${act.filter(a=>ds.some(d=>d.id===a.devId)).length}</td><td>${compliancePct(ds)}%</td></tr>`}).join("")}</table>`:'<div class="empty">No organizations. Click "Load sample MSP".</div>'}</div>
+ <div class="card"><h3>Latest alerts ${tip("alert")}</h3>${act.slice(-8).reverse().map(a=>{const d=byId(S.devices,a.devId);return`<div class="ctl"><div><div class="nm">${sevPill(a.sev)} ${esc(d?d.name:"?")}</div><div class="ds">${esc(a.msg)}</div></div><button class="sm" data-act="tab" data-v="alerts">View</button></div>`}).join("")||'<div class="empty">All clear.</div>'}</div></div>`}
+
+function vOrgs(){return`<h2>Organizations ${tip("org")}</h2><p class="sub">Organization → Location → Device. Each organization maps device roles to agent policies.</p>
+ <div class="row" style="margin-bottom:12px"><button class="pri" data-act="addOrg">+ Add organization</button></div>
+ <div class="grid g2">${S.orgs.map(o=>{const locs=S.locs.filter(l=>l.orgId===o.id),docs=S.docs.filter(k=>k.orgId===o.id);return`<div class="card">
+ <div class="row" style="justify-content:space-between"><h3>${esc(o.name)}</h3><button class="sm" data-act="delOrg" data-v="${o.id}">✕</button></div>
+ <div style="font-size:12px;color:var(--mute);margin-bottom:4px">Locations ${tip("location")}</div>${locs.map(l=>`<span class="pill" style="margin:2px">${esc(l.name)} · ${S.devices.filter(d=>d.locId===l.id).length}</span>`).join("")}
+ <div style="font-size:12px;color:var(--mute);margin:10px 0 4px">Policy mapping ${tip("policy")}</div><table>${ROLES.map(r=>`<tr><td style="font-size:12px">${r}</td><td style="font-size:12px">${o.map[r]?esc(byId(S.policies,o.map[r]).name):'<span class="pill warn">none</span>'}</td></tr>`).join("")}</table>
+ <div class="row" style="margin-top:10px"><button class="sm" data-act="addLoc" data-v="${o.id}">+ Location</button><button class="sm" data-act="editMap" data-v="${o.id}">Edit mapping</button><button class="sm pri" data-act="deploy" data-v="${o.id}" data-tip="installer">Deploy agents</button></div>
+ <div style="font-size:12px;color:var(--mute);margin:12px 0 4px;display:flex;gap:6px;align-items:center">Documentation ${tip("docs")} <button class="sm" data-act="addDoc" data-v="${o.id}">+ Add</button></div>
+ ${docs.map(k=>`<div class="ctl"><div><div class="nm">${k.type==="Credential"?"🔑":"📄"} ${esc(k.title)} <span class="pill">${k.type}</span></div><div class="ds">${k.type==="Credential"&&!k.shown?"••••••••••":esc(k.detail||"—")}</div></div><div class="row">${k.type==="Credential"?`<button class="sm" data-act="revealDoc" data-v="${k.id}" data-tip="cred">${k.shown?"Hide":"Reveal"}</button>`:""}<button class="sm" data-act="delDoc" data-v="${k.id}">✕</button></div></div>`).join("")||'<div class="empty">Nothing documented.</div>'}
+ </div>`}).join("")||'<div class="card empty">No organizations yet.</div>'}</div>`}
+
+function vDevs(){const d=byId(S.devices,S.sel);return`<h2>Devices ${tip("device")}</h2><p class="sub">Click a device to open it.</p>${d?devDetail(d):""}
+ <div class="card"><div class="tw"><table><tr><th>Device</th><th>Organization / Location</th><th>Role ${tip("role")}</th><th>Policy</th><th>Disk ${tip("disk")}</th><th>Patches</th><th>AV</th><th>Alerts</th></tr>
+ ${S.devices.map(x=>{const al=devAlerts(x),pend=x.patches.filter(p=>["new","available","approved","held"].includes(p.state)).length;return`<tr class="click ${S.sel===x.id?"sel":""}" data-act="selDev" data-v="${x.id}"><td><span class="dot ${!x.online?"off":al.length?"alert":""}"></span><b>${esc(x.name)}</b><div style="font-size:11px;color:var(--mute)">${esc(x.user)}</div></td>
+ <td>${esc(orgName(x.orgId))}<div style="font-size:11px;color:var(--mute)">${esc(locName(x.locId))}</div></td><td>${x.role}</td><td style="font-size:12px">${esc(devEff(x).name)}${x.override?' <span class="pill warn">override</span>':""}</td>
+ <td>${x.disk}%${bar(x.disk)}</td><td>${pend?`<span class="pill warn">${pend} pending</span>`:'<span class="pill ok">ok</span>'}</td><td>${x.av==="running"?'<span class="pill ok">on</span>':'<span class="pill">—</span>'}</td><td>${al.length?`<span class="pill bad">${al.length}</span>`:""}</td></tr>`}).join("")||'<tr><td colspan="8" class="empty">No devices. Deploy agents from Organizations.</td></tr>'}</table></div></div>`}
+function devDetail(d){const e=devEff(d),t=S.dtab||"overview";const tabs=[["overview","Overview"],["patches","Patches"],["software","Software"],["alerts","Alerts"]];
+ let body="";
+ if(t==="overview")body=`<div class="grid g4">${stat(d.online?'<span style="color:var(--ok)">Online</span>':'<span style="color:var(--mute)">Offline</span>',"Status","agent")}${stat(d.disk+"%","Disk used","disk")}${stat(d.cpu+"%","CPU")}${stat(d.spooler==="running"?"Running":'<span style="color:var(--bad)">Stopped</span>',"Print Spooler","svc")}</div>
+  <table style="margin-top:10px"><tr><td>OS</td><td>${esc(d.os)}</td></tr><tr><td>Effective policy ${tip("inherit")}</td><td>${esc(e.name)} ${polChain(devPolicyId(d)).length>1?'<span class="pill acc">inherits</span>':""}</td></tr><tr><td>Pending reboot ${tip("reboot")}</td><td>${d.pendingReboot?'<span class="pill warn">yes</span>':"no"}</td></tr>
+  <tr><td>Antivirus ${tip("av")}</td><td>${d.av}</td></tr><tr><td>Last backup ${tip("backup")}</td><td>${d.backup.status==="none"?"never":`${d.backup.status} ${d.backup.last!=null?"· "+clockStr(d.backup.last):""}`}</td></tr></table>`;
+ if(t==="patches")body=d.patches.length?`<table><tr><th>KB</th><th>Title</th><th>Severity</th><th>State</th><th></th></tr>${d.patches.map(p=>`<tr><td>${p.kb}${p.flagged?' <span class="pill bad" data-tip="ai">AI flag</span>':""}</td><td>${esc(p.title)}</td><td>${p.sev}</td><td>${patchPill(p.state)}</td><td>${["available","held"].includes(p.state)?`<button class="sm" data-act="approve" data-v="${p.id}">Approve</button> <button class="sm" data-act="reject" data-v="${p.id}">Reject</button>`:""}</td></tr>`).join("")}</table>`:'<div class="empty">No patches reported. Release Patch Tuesday on the Patching page.</div>';
+ if(t==="software")body=`<div>${d.apps.map(a=>`<span class="pill ${d.outdated.includes(a)?"warn":"ok"}" style="margin:2px">${esc(a)}${d.outdated.includes(a)?" (outdated)":""}</span>`).join("")||'<span class="empty">none</span>'}</div>${d.outdated.filter(a=>!d.apps.includes(a)).length?`<p style="font-size:12px;color:var(--mute)">Outdated installs not yet managed: ${d.outdated.filter(a=>!d.apps.includes(a)).map(esc).join(", ")}</p>`:""}`;
+ if(t==="alerts")body=devAlerts(d).map(a=>`<div class="ctl"><div class="nm">${sevPill(a.sev)} ${esc(a.msg)}</div><button class="sm" data-act="resetAlert" data-v="${a.id}">Reset</button></div>`).join("")||'<div class="empty">No active alerts.</div>';
+ return`<div class="card" style="margin-bottom:12px;border-color:var(--acc2)"><div class="row" style="justify-content:space-between"><h3><span class="dot ${d.online?"":"off"}"></span>${esc(d.name)} <span class="pill">${d.role}</span></h3><button class="sm" data-act="closeDev">Close</button></div>
+ <div class="row" style="margin-bottom:10px"><button class="sm pri" data-act="remote" data-v="${d.id}" data-tip="remote">Remote session</button><button class="sm" data-act="devScript" data-v="${d.id}" data-tip="lib">Run automation</button><button class="sm" data-act="devReboot" data-v="${d.id}">Reboot</button>
+ ${d.online?"":`<button class="sm" data-act="devWake" data-v="${d.id}">Mark back online</button>`}<button class="sm" data-act="devOverride" data-v="${d.id}" data-tip="inherit">Policy override</button><button class="sm dan" data-act="devRemove" data-v="${d.id}">Remove device</button></div>
+ <div class="tabs">${tabs.map(([k,l])=>`<button data-act="dtab" data-v="${k}" class="${t===k?"on":""}">${l}</button>`).join("")}</div>${body}</div>`}
+const patchPill=s=>`<span class="pill ${s==="installed"?"ok":s==="held"||s==="rejected"?"bad":s==="approved"?"acc":"warn"}">${s==="new"?"not scanned":s}</span>`;
+
+function vPols(){const p=byId(S.policies,S.polSel);return`<h2>Policies ${tip("policy")}</h2><p class="sub">Agent policies drive monitoring, automation, patching, software, security and backup.</p>
+ <div class="grid g2"><div class="card"><div class="row" style="justify-content:space-between"><h3>Agent policies</h3><button class="pri" data-act="addPol">+ New policy</button></div>
+ <table><tr><th>Name</th><th>Role</th><th>Used by</th></tr>${S.policies.map(x=>{const n=S.devices.filter(d=>devPolicyId(d)===x.id).length;return`<tr class="click ${S.polSel===x.id?"sel":""}" data-act="selPol" data-v="${x.id}"><td>${x.parentId?"↳ ":""}${esc(x.name)}${x.parentId?` <span class="pill acc" data-tip="inherit">child</span>`:""}</td><td style="font-size:12px">${x.role}</td><td>${n} device(s)</td></tr>`}).join("")||'<tr><td colspan="3" class="empty">No policies.</td></tr>'}</table></div>
+ ${p?polEditor(p):'<div class="card empty">Select a policy to edit it.</div>'}</div>`}
+function polEditor(p){const t=S.ptab,e=eff(p.id),par=byId(S.policies,p.parentId);const tabs=[["cond","Conditions"],["auto","Scheduled automations"],["patch","Patching"],["sw","Software"],["sec","Security"],["bk","Backup"]];
+ const inh=k=>par?(p[k]===null?`<div class="row" style="margin-bottom:8px"><span class="pill acc">Inherited from ${esc(par.name)}</span><button class="sm" data-act="ownSetting" data-v="${p.id}" data-k="${k}">Override</button></div>`:`<div class="row" style="margin-bottom:8px"><span class="pill warn">Overriding parent</span><button class="sm" data-act="inheritSetting" data-v="${p.id}" data-k="${k}">Revert to inherit</button></div>`):"";
+ const own=k=>p[k]!==null;let body="";
+ if(t==="cond")body=`${par?`<p style="font-size:12px;color:var(--mute)">Inherited conditions: ${eff(par.id).conds.map(c=>esc(condLabel(c))).join("; ")||"none"}</p>`:""}
+  ${p.conds.map(c=>`<div class="ctl"><div><div class="nm">${sevPill(c.sev)} ${esc(condLabel(c))}</div><div class="ds">${[c.ticket&&"create ticket",c.notify&&"notify",c.script&&"run: "+(byId(S.scripts,c.script)||{}).name].filter(Boolean).join(" · ")||"alert only"}</div></div><button class="sm" data-act="delCond" data-v="${p.id}" data-k="${c.id}">✕</button></div>`).join("")||'<div class="empty">No conditions on this policy.</div>'}
+  <div class="row" style="margin-top:8px"><button class="sm pri" data-act="addCond" data-v="${p.id}">+ Add condition</button>${tip("compound")} ${tip("remed")}</div>`;
+ if(t==="auto")body=`${p.autos.map(a=>`<div class="ctl"><div><div class="nm">${esc((byId(S.scripts,a.script)||{}).name)}</div><div class="ds">${a.sched}</div></div><button class="sm" data-act="delAuto" data-v="${p.id}" data-k="${a.id}">✕</button></div>`).join("")||'<div class="empty">None.</div>'}<button class="sm pri" style="margin-top:8px" data-act="addAuto" data-v="${p.id}">+ Add scheduled automation</button> ${tip("auto")}`;
+ if(t==="patch"){body=inh("patch");if(own("patch")){const pt=p.patch;body+=`<div class="ctl"><div><div class="nm">OS patching ${tip("patch")}</div><div class="ds">Windows devices only in this sim</div></div><label class="sw"><input type="checkbox" ${pt.enabled?"checked":""} data-act="patchOn" data-v="${p.id}"><span></span></label></div>
+  <div class="ctl"><div><div class="nm">Hold AI-flagged patches ${tip("ai")}</div><div class="ds">Patch Intelligence AI flags unstable updates</div></div><label class="sw"><input type="checkbox" ${pt.ai?"checked":""} data-act="patchAI" data-v="${p.id}"><span></span></label></div>
+  <table style="margin:8px 0"><tr><td>Scan / install ${tip("window")}</td><td>${String(pt.scanHour).padStart(2,"0")}:00 / ${String(pt.applyHour).padStart(2,"0")}:00</td></tr>${PSEV.map(s=>`<tr><td>${s} ${s==="Critical"?tip("approve"):""}</td><td>${pt.rules[s]}</td></tr>`).join("")}<tr><td>Reboot ${tip("reboot")}</td><td>${pt.reboot}</td></tr></table><button class="sm pri" data-act="patchEdit" data-v="${p.id}">Edit patch settings</button>`}
+  else body+=`<p class="ds" style="font-size:12px">Effective: ${e.patch.enabled?"enabled":"disabled"}, AI hold ${e.patch.ai?"on":"off"}</p>`}
+ if(t==="sw"){body=inh("sw");const sw=own("sw")?p.sw:e.sw;body+=`<p><b style="font-size:12px;color:var(--mute)">Install ${tip("swdeploy")}</b><br>${sw.install.map(a=>`<span class="pill ok" style="margin:2px">${esc(a)}</span>`).join("")||'<span class="empty">none</span>'}</p><p><b style="font-size:12px;color:var(--mute)">Third-party patching ${tip("tpp")}</b><br>${sw.tpp.map(a=>`<span class="pill acc" style="margin:2px">${esc(a)}</span>`).join("")||'<span class="empty">none</span>'}</p>${own("sw")?`<button class="sm pri" data-act="swEdit" data-v="${p.id}">Edit software</button>`:""}`}
+ if(t==="sec"){body=inh("av");body+=own("av")?`<div class="ctl"><div><div class="nm">Antivirus / EDR ${tip("av")}</div><div class="ds">Deploy and monitor endpoint protection</div></div><label class="sw"><input type="checkbox" ${p.av?"checked":""} data-act="avOn" data-v="${p.id}"><span></span></label></div>`:`<p class="ds" style="font-size:12px">Effective: antivirus ${e.av?"enabled":"disabled"}</p>`}
+ if(t==="bk"){body=inh("backup");const b=own("backup")?p.backup:e.backup;body+=`<table><tr><td>Backup ${tip("backup")}</td><td>${b.enabled?'<span class="pill ok">enabled</span>':'<span class="pill">disabled</span>'}</td></tr>${b.enabled?`<tr><td>Type</td><td>${b.type}</td></tr><tr><td>Destination</td><td>${b.dest}</td></tr><tr><td>Schedule</td><td>Daily ${String(b.hour).padStart(2,"0")}:00</td></tr>`:""}</table>${own("backup")?`<button class="sm pri" style="margin-top:8px" data-act="bkEdit" data-v="${p.id}">Edit backup</button>`:""}`}
+ return`<div class="card"><div class="row" style="justify-content:space-between"><h3>${esc(p.name)}</h3><button class="sm" data-act="delPol" data-v="${p.id}">Delete</button></div>
+ <p style="font-size:12px;color:var(--mute);margin:0 0 8px">${p.role}${par?` · inherits from <b>${esc(par.name)}</b> ${tip("inherit")}`:""}</p>
+ <div class="tabs">${tabs.map(([k,l])=>`<button data-act="ptab" data-v="${k}" class="${t===k?"on":""}">${l}</button>`).join("")}</div>${body}</div>`}
+
+function vLib(){return`<h2>Automation Library ${tip("lib")}</h2><p class="sub">Scripts and actions you can run on demand, from conditions, or on a schedule.</p>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Automations</h3><button class="pri" data-act="addScript">+ Add script</button></div>
+ <table><tr><th>Name</th><th>Language</th><th>Category</th><th>Simulated effect</th><th></th></tr>${S.scripts.map(s=>`<tr><td>${esc(s.name)} ${s.builtIn?'<span class="pill">built-in</span>':""}</td><td>${esc(s.lang)}</td><td>${esc(s.cat)}</td><td style="font-size:12px">${EFFECTS[s.effect]}</td><td>${s.builtIn?"":`<button class="sm" data-act="delScript" data-v="${s.id}">✕</button>`}</td></tr>`).join("")}</table></div>`}
+
+function vPatch(){const W=S.devices.filter(d=>d.role.startsWith("Windows"));const kbs={};W.forEach(d=>d.patches.forEach(p=>{const k=kbs[p.kb]=kbs[p.kb]||{kb:p.kb,title:p.title,sev:p.sev,flagged:p.flagged,c:{}};k.c[p.state]=(k.c[p.state]||0)+1}));
+ return`<h2>Patching ${tip("patch")}</h2><p class="sub">OS patches across all Windows devices. Settings live in each policy's Patching tab.</p>
+ <div class="row" style="margin-bottom:12px"><button class="pri" data-act="ptues" data-tip="ptues">Release Patch Tuesday</button><button data-act="scanAll">Scan now</button><button data-act="applyAll" data-tip="window">Install approved now</button></div>
+ <div class="grid g4" style="margin-bottom:12px">${stat(compliancePct(S.devices)+"%","Overall compliance","compliance")}${S.orgs.map(o=>stat(compliancePct(S.devices.filter(d=>d.orgId===o.id))+"%",esc(o.name))).join("")}</div>
+ <div class="card"><h3>Patches by KB</h3>${Object.keys(kbs).length?`<div class="tw"><table><tr><th>KB</th><th>Title</th><th>Severity</th><th>Status across devices</th><th></th></tr>${Object.values(kbs).map(k=>`<tr><td>${k.kb}${k.flagged?` <span class="pill bad" data-tip="ai">AI flag</span>`:""}</td><td>${esc(k.title)}</td><td>${k.sev}</td><td>${Object.entries(k.c).map(([s,n])=>`${patchPill(s)} ${n}`).join(" ")}</td><td>${(k.c.held||k.c.available||k.c.new)?`<button class="sm" data-act="rejectKB" data-v="${k.kb}">Reject all</button>`:""}</td></tr>`).join("")}</table></div>`:'<div class="empty">No patches yet. Release Patch Tuesday.</div>'}</div>
+ <div class="card" style="margin-top:12px"><h3>Manual review queue ${tip("approve")}</h3>${W.flatMap(d=>d.patches.filter(p=>p.state==="available"||p.state==="held").map(p=>`<div class="ctl"><div><div class="nm">${esc(d.name)} · ${p.kb} ${patchPill(p.state)}</div><div class="ds">${esc(p.title)} · ${p.sev}</div></div><div class="row"><button class="sm" data-act="approve" data-v="${p.id}">Approve</button><button class="sm" data-act="reject" data-v="${p.id}">Reject</button></div></div>`)).slice(0,40).join("")||'<div class="empty">Nothing awaiting review.</div>'}</div>`}
+
+function vAlerts(){const act=S.alerts.filter(a=>a.status==="active");return`<h2>Alerts ${tip("alert")}</h2><p class="sub">Raised by policy conditions. They reset automatically when the condition clears.</p>
+ <div class="card"><div class="tw"><table><tr><th>Severity ${tip("sev")}</th><th>Device</th><th>Organization</th><th>Condition</th><th>Since</th><th></th></tr>${act.map(a=>{const d=byId(S.devices,a.devId)||{};return`<tr><td>${sevPill(a.sev)}</td><td>${esc(d.name)}</td><td>${esc(orgName(d.orgId))}</td><td>${esc(a.msg)}</td><td style="font-size:12px">${clockStr(a.time)}</td>
+ <td><div class="row"><button class="sm" data-act="selDev" data-v="${d.id}" onclick="S.tab='devs'">Device</button>${a.ticketId?`<span class="pill acc">#${byId(S.tickets,a.ticketId).num}</span>`:`<button class="sm" data-act="alertTicket" data-v="${a.id}">Create ticket</button>`}<button class="sm" data-act="resetAlert" data-v="${a.id}">Reset</button></div></td></tr>`}).join("")||'<tr><td colspan="6" class="empty">No active alerts.</td></tr>'}</table></div></div>
+ <div class="card" style="margin-top:12px"><h3>Recently cleared</h3>${S.alerts.filter(a=>a.status==="reset").slice(-8).reverse().map(a=>`<div class="ctl"><div class="ds">${esc((byId(S.devices,a.devId)||{}).name)} — ${esc(a.msg)} ${a.auto?'<span class="pill ok">auto-remediated</span>':""}</div></div>`).join("")||'<div class="empty">None.</div>'}</div>`}
+
+function vTix(){const cols=["Open","In Progress","Waiting","Resolved"];return`<h2>Ticketing ${tip("ticket")}</h2><p class="sub">SLA targets: P1 4h · P2 8h · P3 24h · P4 72h ${tip("sla")}</p>
+ <div class="row" style="margin-bottom:12px"><button class="pri" data-act="newTicket">+ New ticket</button></div>
+ <div class="board">${cols.map(c=>{const ts=S.tickets.filter(t=>t.status===c);return`<div class="col"><h4><span>${c}</span><span>${ts.length}</span></h4>${ts.map(t=>{const age=(t.resolvedAt??S.clock)-t.created,left=SLA[t.pri]-age;return`<div class="tk ${breach(t)?"breach":""}" data-act="openTicket" data-v="${t.id}"><div class="row" style="justify-content:space-between"><b>#${t.num}</b>${sevPill(t.pri)}</div><div style="margin:4px 0">${esc(t.title)}</div>
+ <div style="color:var(--mute)">${esc(orgName(t.orgId))} · ${esc(t.assignee)}</div><div style="color:${breach(t)?"var(--bad)":"var(--mute)"}">${t.status==="Resolved"?`resolved in ${age}h`:left>=0?`SLA: ${left}h left`:`SLA breached by ${-left}h`}</div></div>`}).join("")||'<div class="empty">—</div>'}</div>`}).join("")}</div>`}
+
+function vBk(){const D=S.devices.filter(d=>devEff(d).backup.enabled||d.role.includes("Server"));return`<h2>Backup ${tip("backup")}</h2><p class="sub">Backup is configured per policy. Run on demand here, and prove recovery with restore tests ${tip("restore")}.</p>
+ <div class="card"><div class="tw"><table><tr><th>Device</th><th>Organization</th><th>Policy backup</th><th>Last result</th><th></th></tr>${D.map(d=>{const b=devEff(d).backup;return`<tr><td>${esc(d.name)}</td><td>${esc(orgName(d.orgId))}</td><td>${b.enabled?`${b.type} → ${b.dest} @ ${String(b.hour).padStart(2,"0")}:00`:'<span class="pill bad">not configured</span>'}</td>
+ <td>${d.backup.status==="success"?`<span class="pill ok">success</span> ${clockStr(d.backup.last)}`:d.backup.status==="failed"?'<span class="pill bad">failed</span>':'<span class="pill">never</span>'}</td><td><div class="row"><button class="sm" data-act="runBk" data-v="${d.id}">Back up now</button><button class="sm" data-act="restoreTest" data-v="${d.id}" data-tip="restore">Test restore</button></div></td></tr>`}).join("")||'<tr><td colspan="5" class="empty">No servers or backup-enabled devices.</td></tr>'}</table></div>
+ ${S.flags.restoreTested?'<p><span class="pill ok">Restore test passed</span></p>':""}</div>`}
+
+function vScn(){const st=scnState();let cur="";if(st){const el=(S.scenario.end??S.clock)-S.scenario.start;
+ cur=`<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>${esc(st.s.title)} <span class="pill">${st.s.lvl}</span></h3><button class="sm dan" data-act="stopScn">End</button></div><p>${esc(st.s.desc)}</p>${bar(st.done/st.res.length*100)}
+ <p style="font-size:12px;color:var(--mute)">${st.done}/${st.res.length} complete · ${el} simulated hour(s)</p>${st.s.obj.map((o,i)=>`<div class="obj ${st.res[i]?"done":""}"><div class="ck">${st.res[i]?"✓":""}</div><div><div>${esc(o[0])}</div><div class="hint">Hint: ${esc(o[2])}</div></div></div>`).join("")}
+ ${st.done===st.res.length?`<p style="margin-top:12px"><span class="pill ok">Complete in ${el} simulated hour(s)</span></p>`:""}</div>`}
+ return`<h2>Practice scenarios ${tip("scn")}</h2><p class="sub">Each scenario loads a fresh sample MSP and checks your objectives live.</p>${cur}
+ <div class="grid g2">${SCN.map(s=>`<div class="card"><h3>${esc(s.title)} <span class="pill ${s.lvl==="Beginner"?"ok":s.lvl==="Advanced"?"bad":"warn"}">${s.lvl}</span></h3><p style="margin:0 0 8px">${esc(s.desc)}</p><div style="font-size:12px;color:var(--mute);margin-bottom:10px">${s.obj.length} objectives</div><button class="pri" data-act="startScn" data-v="${s.id}">${S.scenario&&S.scenario.id===s.id?"Restart":"Start"}</button></div>`).join("")}</div>`}
+
+/* ===================== REMOTE & TICKET MODALS ===================== */
+function openRemote(id){const d=byId(S.devices,id);if(!d.online)return toast(`${d.name} is offline. Remote access needs the agent online.`);
+ log(`Remote session opened to ${d.name} (background mode)`);const root=document.getElementById("modalRoot");let out=`Connected to ${d.name} (${d.os}) — background mode, user not interrupted.\n`;
+ const draw=(view="svc")=>{const svcs=[["Print Spooler",d.spooler],["Windows Update","running"],["DNS Client","running"],["Windows Defender",d.av==="running"?"running":d.av==="none"?"not installed":"stopped"]];
+  root.innerHTML=`<div class="modal-bg"><div class="modal wide"><div class="row" style="justify-content:space-between"><h3>Remote session — ${esc(d.name)} ${tip("remote")}</h3><button data-x>End session</button></div>
+  <div class="tabs">${[["svc","Services"],["term","Terminal"],["files","File transfer"],["proc","Processes"]].map(([k,l])=>`<button data-v="${k}" class="${view===k?"on":""}">${l}</button>`).join("")}</div>
+  ${view==="svc"?`<table>${svcs.map(([n,s])=>`<tr><td>${n}</td><td><span class="pill ${s==="running"?"ok":"bad"}">${s}</span></td><td>${n==="Print Spooler"&&d.role.startsWith("Windows")?`<button class="sm" data-svc>Restart</button>`:""}</td></tr>`).join("")}</table>`:""}
+  ${view==="term"?`<div class="row" style="margin-bottom:8px">${["ipconfig /flushdns","Get-PSDrive C","Get-Service Spooler","cleanmgr /sagerun:1"].map(c=>`<button class="sm" data-cmd="${c}">${c}</button>`).join("")}</div>`:""}
+  ${view==="files"?`<p>Simulated file browser: C:\\Users\\${esc(d.user)}\\Documents</p><button class="sm" data-file>Download logs.zip to technician</button>`:""}
+  ${view==="proc"?`<table><tr><th>Process</th><th>CPU</th></tr><tr><td>Teams.exe</td><td>${Math.round(d.cpu*.4)}%</td></tr><tr><td>chrome.exe</td><td>${Math.round(d.cpu*.3)}%</td></tr><tr><td>MsMpEng.exe</td><td>${Math.round(d.cpu*.1)}%</td></tr></table>`:""}
+  <div class="term" style="margin-top:10px">${esc(out)}</div></div></div>`;
+  root.querySelector("[data-x]").onclick=()=>{log(`Remote session to ${d.name} ended`);root.innerHTML="";commit()};
+  root.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>draw(b.dataset.v));
+  const sv=root.querySelector("[data-svc]");if(sv)sv.onclick=()=>{if(d.spooler==="stopped"){d.spooler="running";S.flags.remoteFix=true;out+="> Restart-Service Spooler\nService 'Print Spooler' started.\n";log(`Print Spooler restarted on ${d.name} via remote session`,"ok");evaluate()}else out+="> Restart-Service Spooler\nService restarted (was already running).\n";draw("svc")};
+  root.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{const c=b.dataset.cmd;out+=`> ${c}\n`;
+   if(c.startsWith("ipconfig"))out+="Successfully flushed the DNS Resolver Cache.\n";if(c==="Get-PSDrive C")out+=`C: Used ${d.disk}%  Free ${100-d.disk}%\n`;if(c==="Get-Service Spooler")out+=`Status: ${d.spooler}\n`;
+   if(c.startsWith("cleanmgr")){const b0=d.disk;d.disk=Math.max(35,d.disk-12);out+=`Disk cleanup complete: ${b0}% → ${d.disk}%\n`;log(`Disk cleanup on ${d.name} via remote terminal`,"ok");evaluate()}draw("term")});
+  const fl=root.querySelector("[data-file]");if(fl)fl.onclick=()=>{out+="Transferred logs.zip (2.4 MB)\n";log(`File transferred from ${d.name}`);draw("files")}};
+ draw();return"__toast"}
+function openTicket(id){const t=byId(S.tickets,id);const root=document.getElementById("modalRoot");const d=byId(S.devices,t.devId);
+ root.innerHTML=`<div class="modal-bg"><form class="modal"><div class="row" style="justify-content:space-between"><h3>Ticket #${t.num} ${sevPill(t.pri)}</h3><span class="pill">${esc(t.source)}</span></div><p><b>${esc(t.title)}</b><br><span style="color:var(--mute);font-size:12px">${esc(orgName(t.orgId))}${d?" · "+esc(d.name):""} · opened ${clockStr(t.created)}</span></p>
+ <div class="row"><div class="field" style="flex:1"><label>Status</label><select name="status">${["Open","In Progress","Waiting","Resolved"].map(s=>`<option ${t.status===s?"selected":""}>${s}</option>`).join("")}</select></div>
+ <div class="field" style="flex:1"><label>Assignee</label><select name="as">${TECHS.map(s=>`<option ${t.assignee===s?"selected":""}>${s}</option>`).join("")}</select></div>
+ <div class="field" style="flex:1"><label>Priority ${tip("sla")}</label><select name="pri">${["P1","P2","P3","P4"].map(s=>`<option ${t.pri===s?"selected":""}>${s}</option>`).join("")}</select></div></div>
+ <div class="field"><label>Add note</label><textarea name="note" rows="2" placeholder="What you found / did…"></textarea></div>
+ ${t.notes.map(n=>`<div class="ctl"><div class="ds"><b>${esc(n.by)}</b> · ${n.t}<br>${esc(n.txt)}</div></div>`).join("")}
+ ${d?`<button type="button" class="sm" data-goto>Open device ${esc(d.name)}</button>`:""}
+ <div class="row" style="justify-content:flex-end;margin-top:10px"><button type="button" data-close>Close</button><button class="pri" type="submit">Save</button></div></form></div>`;
+ const fm=root.querySelector("form");fm.querySelector("[data-close]").onclick=()=>{root.innerHTML=""};
+ const g=fm.querySelector("[data-goto]");if(g)g.onclick=()=>{root.innerHTML="";S.tab="devs";S.sel=d.id;commit()};
+ fm.onsubmit=e=>{e.preventDefault();const q=n=>fm.querySelector(`[name="${n}"]`);const st=q("status").value,as=q("as").value,pr=q("pri").value,nt=q("note").value.trim();
+  if(as!==t.assignee)log(`Ticket #${t.num} assigned to ${as}`);t.assignee=as;if(pr!==t.pri){log(`Ticket #${t.num} priority ${t.pri} → ${pr}`);t.pri=pr}
+  if(nt)t.notes.push({t:clockStr(),by:as==="Unassigned"?"Technician":as,txt:nt});
+  if(st!==t.status){if(st==="Resolved"){t.resolvedAt=S.clock;log(`Ticket #${t.num} resolved after ${S.clock-t.created}h`,"ok")}else{delete t.resolvedAt;log(`Ticket #${t.num} → ${st}`)}t.status=st}
+  root.innerHTML="";commit()};return"__toast"}
+
+/* ===================== GENERIC MODALS ===================== */
+function closeModal(){document.getElementById("modalRoot").innerHTML=""}
+function form(title,fields,onSubmit){const html=fields.map(f=>{const lab=`<label>${esc(f.label)} ${f.tip?tip(f.tip):""}</label>`;
+  if(f.type==="select")return`<div class="field">${lab}<select name="${f.k}">${f.options.map(o=>{const[v,l]=Array.isArray(o)?o:[o,o];return`<option value="${esc(v)}" ${String(f.value)===String(v)?"selected":""}>${esc(l)}</option>`}).join("")}</select></div>`;
+  if(f.type==="checks")return`<div class="field">${lab}<div class="checks">${f.options.map(([v,l])=>`<label><input type="checkbox" name="${f.k}" value="${esc(v)}" ${(f.value||[]).includes(v)?"checked":""}>${esc(l)}</label>`).join("")}</div></div>`;
+  if(f.type==="checkbox")return`<div class="field"><label style="color:var(--text)"><input type="checkbox" name="${f.k}" style="width:auto" ${f.value?"checked":""}> ${esc(f.label)} ${f.tip?tip(f.tip):""}</label></div>`;
+  if(f.type==="textarea")return`<div class="field">${lab}<textarea name="${f.k}" rows="3">${esc(f.value||"")}</textarea></div>`;
+  return`<div class="field">${lab}<input name="${f.k}" type="${f.type||"text"}" value="${esc(f.value??"")}"></div>`}).join("");
+ const root=document.getElementById("modalRoot");root.innerHTML=`<div class="modal-bg"><form class="modal"><h3>${esc(title)}</h3>${html}<div id="ferr" style="color:#ffa198;min-height:18px;font-size:13px"></div><div class="row" style="justify-content:flex-end"><button type="button" data-close>Cancel</button><button class="pri" type="submit">OK</button></div></form></div>`;
+ const fm=root.querySelector("form");fm.querySelector("[data-close]").onclick=closeModal;
+ fm.onsubmit=e=>{e.preventDefault();const out={};fields.forEach(f=>{if(f.type==="checks")out[f.k]=[...fm.querySelectorAll(`input[name="${f.k}"]:checked`)].map(i=>i.value);else if(f.type==="checkbox")out[f.k]=fm.querySelector(`input[name="${f.k}"]`).checked;else out[f.k]=fm.querySelector(`[name="${f.k}"]`).value.trim()});
+  const err=onSubmit(out);if(err){fm.querySelector("#ferr").textContent=err;return}closeModal();commit()}}
+function confirmBox(msg,yes){const root=document.getElementById("modalRoot");root.innerHTML=`<div class="modal-bg"><div class="modal"><p>${esc(msg)}</p><div class="row" style="justify-content:flex-end"><button data-n>Cancel</button><button class="pri" data-y>Confirm</button></div></div></div>`;
+ root.querySelector("[data-n]").onclick=closeModal;root.querySelector("[data-y]").onclick=()=>{closeModal();yes()}}
+function toast(msg){log(msg,"warn");const root=document.getElementById("modalRoot");root.innerHTML=`<div class="modal-bg"><div class="modal"><h3 style="color:var(--warn)">Can't do that yet</h3><p>${esc(msg)}</p><div class="row" style="justify-content:flex-end"><button class="pri" data-n>OK</button></div></div></div>`;
+ root.querySelector("[data-n]").onclick=()=>{closeModal();render()};return"__toast"}
+
+/* ===================== EVENTS ===================== */
+function commit(){save();render()}
+document.addEventListener("click",e=>{const ti=e.target.closest(".tip-ic");if(ti){e.preventDefault();e.stopPropagation();showTip(ti,true);return}
+ if(e.target.closest("#modalRoot"))return;
+ const el=e.target.closest("[data-act]");if(!el)return;if(el.closest("label.sw")&&e.target.tagName!=="INPUT")return;
+ const fn=A[el.dataset.act];if(!fn)return;const r=el.dataset.k?fn(el.dataset.v,el.dataset.k):fn(el.dataset.v);if(r!=="__toast")commit();else save()});
+const tipEl=document.getElementById("tip");let pinned=false;
+function showTip(el,pin){const g=G[el.dataset.tip];if(!g)return;pinned=!!pin;
+ tipEl.innerHTML=`<h4>${esc(g.t)}</h4><p>${esc(g.d)}</p><div class="k">How to</div><p>${esc(g.h)}</p>${g.a?`<div class="k">Alternatives</div><p>${esc(g.a)}</p>`:""}${pin?'<p style="font-size:11px;color:var(--mute);margin-top:8px">Tap anywhere to close</p>':""}`;
+ tipEl.style.display="block";const r=el.getBoundingClientRect(),tw=tipEl.offsetWidth,th=tipEl.offsetHeight;let x=Math.min(Math.max(8,r.left+r.width/2-tw/2),innerWidth-tw-8),y=r.bottom+8;if(y+th>innerHeight-8)y=Math.max(8,r.top-th-8);tipEl.style.left=x+"px";tipEl.style.top=y+"px"}
+document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el&&!pinned)showTip(el,false)});
+document.addEventListener("mouseout",e=>{const el=e.target.closest("[data-tip]");if(el&&!pinned&&!el.contains(e.relatedTarget))tipEl.style.display="none"});
+document.addEventListener("pointerdown",e=>{if(pinned&&!e.target.closest(".tip-ic")&&!e.target.closest("#tip")){pinned=false;tipEl.style.display="none"}},true);
+if(!S.log.length)log("Welcome. Click 'Load sample MSP' or start a scenario. Hover (or tap) any ? for help.");
+if(innerWidth<760)document.getElementById("log").classList.add("min");
+render();
+</script>
+</body>
+</html>

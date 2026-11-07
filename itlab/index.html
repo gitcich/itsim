@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IT Lab Simulator</title>
+<style>
+:root{
+  --bg:#0f1419;--panel:#171e26;--panel2:#1e2731;--line:#2a3542;--text:#dbe3ec;--mute:#8a99a8;
+  --acc:#1d9bd1;--acc2:#0b6e99;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--chip:#243241;
+}
+body.ms{--acc:#3b8eea;--acc2:#1f5fb4;}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:6px;padding:6px 11px}
+button:hover{border-color:var(--acc)}
+button.pri{background:var(--acc2);border-color:var(--acc)}
+button.dan{border-color:#6b2a2a;color:#ffb3ae}
+button.sm{padding:3px 8px;font-size:12px}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select{font:inherit;background:#0d1217;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+header h1{font-size:17px;margin:0;font-weight:600}
+header .brand{display:flex;align-items:center;gap:8px}
+.logo{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;font-weight:700;font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:6px 10px}
+.seg button.on{background:var(--acc2)}
+.spacer{flex:1}
+.layout{display:grid;grid-template-columns:200px 1fr;min-height:calc(100vh - 52px)}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:10px 8px}
+nav button{display:flex;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;margin-bottom:2px;gap:8px;align-items:center}
+nav button.on{background:var(--panel2);box-shadow:inset 3px 0 0 var(--acc)}
+main{padding:16px;min-width:0}
+.banner{font-size:12px;color:var(--mute);margin-bottom:12px}
+h2{font-size:18px;margin:0 0 4px}
+h3{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:6px}
+.sub{color:var(--mute);margin:0 0 14px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.stat .n{font-size:26px;font-weight:600}
+.stat .l{color:var(--mute);font-size:12px;display:flex;gap:4px;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--mute);font-weight:500;font-size:12px}
+.tw{overflow-x:auto}
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;background:var(--chip);white-space:nowrap}
+.pill.ok{background:#173d22;color:#7ee28f}.pill.bad{background:#4a1c1c;color:#ffa198}.pill.warn{background:#3d3012;color:#f0c86a}.pill.acc{background:#13344a;color:#8fd0f5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bar{height:7px;background:#0d1217;border-radius:4px;overflow:hidden;margin-top:3px}
+.bar i{display:block;height:100%;background:var(--acc)}
+.bar i.hot{background:var(--warn)}.bar i.crit{background:var(--bad)}
+.tip-ic{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--mute);color:var(--mute);font-size:10px;font-weight:700;cursor:help;flex:none;user-select:none}
+.tip-ic:hover{border-color:var(--acc);color:var(--acc)}
+[data-tip]{cursor:help}
+#tip{position:fixed;z-index:100;max-width:360px;background:#0b1015;border:1px solid var(--acc);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px #000a;display:none;font-size:13px}
+#tip h4{margin:0 0 6px;font-size:14px;color:var(--acc)}
+#tip .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin-top:8px}
+#tip p{margin:2px 0}
+#log{position:fixed;right:12px;bottom:12px;width:380px;max-width:calc(100vw - 24px);background:var(--panel);border:1px solid var(--line);border-radius:10px;z-index:30;box-shadow:0 8px 24px #0008}
+#log .hd{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:1px solid var(--line);cursor:pointer;font-size:12px;color:var(--mute)}
+#log .bd{max-height:180px;overflow:auto;padding:6px 10px;font:12px/1.5 ui-monospace,Consolas,monospace}
+#log.min .bd{display:none}
+.lg-ok{color:#7ee28f}.lg-bad{color:#ffa198}.lg-warn{color:#f0c86a}.lg-info{color:#9fb3c8}
+.modal-bg{position:fixed;inset:0;background:#000a;z-index:50;display:grid;place-items:center;padding:12px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(520px,100%);max-height:90vh;overflow:auto;padding:18px}
+.field{margin-bottom:11px}
+.field label{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mute);margin-bottom:4px}
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.checks label{display:flex;gap:5px;align-items:center;background:var(--panel2);padding:4px 8px;border-radius:6px;color:var(--text);font-size:12px}
+.checks input{width:auto}
+.topo{display:flex;flex-wrap:wrap;gap:12px}
+.clu{border:1px dashed var(--acc);border-radius:10px;padding:10px;min-width:220px}
+.clu .t{font-size:12px;color:var(--acc);margin-bottom:6px;display:flex;gap:6px;align-items:center}
+.hostbox{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;min-width:200px}
+.hostbox.failed{border-color:var(--bad)}.hostbox.maintenance{border-color:var(--warn)}
+.vmchip{display:inline-block;font-size:11px;padding:2px 7px;border-radius:5px;margin:2px;background:#13344a}
+.vmchip.off{background:#2a2f36;color:var(--mute)}.vmchip.down{background:#4a1c1c}
+.ctl{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.ctl:last-child{border-bottom:0}
+.ctl .nm{font-weight:500;display:flex;gap:6px;align-items:center}
+.ctl .ds{font-size:12px;color:var(--mute)}
+.sw{position:relative;width:40px;height:22px;flex:none}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:#2a3542;border-radius:22px;transition:.2s;cursor:pointer}
+.sw span:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#cfd8e2;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--ok)}
+.sw input:checked+span:before{transform:translateX(18px)}
+.obj{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.obj .ck{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:12px}
+.obj.done .ck{background:var(--ok);border-color:var(--ok);color:#06210c}
+.obj .hint{font-size:12px;color:var(--mute)}
+.scbar{background:#122130;border:1px solid var(--acc2);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+.empty{color:var(--mute);font-style:italic;padding:8px 0}
+.score{font-size:40px;font-weight:700}
+@media (max-width:760px){
+  .layout{grid-template-columns:1fr}
+  nav{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:6px}
+  nav button{width:auto;white-space:nowrap;margin:0 2px}
+  nav button.on{box-shadow:inset 0 -3px 0 var(--acc)}
+  main{padding:12px;padding-bottom:70px}
+  #log{width:auto;left:12px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">IT</div><h1>IT Lab Simulator</h1></div>
+  <span class="tip-ic" data-tip="console">?</span>
+  <div class="seg" id="platSeg">
+    <button data-act="plat" data-v="vmware">VMware vSphere</button>
+    <button data-act="plat" data-v="microsoft">Microsoft Hyper-V</button>
+  </div>
+  <div class="spacer"></div>
+  <button data-act="sample">Load sample environment</button>
+  <button class="dan" data-act="reset">Reset lab</button>
+</header>
+<div class="layout">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<div id="log"><div class="hd" data-act="logtoggle"><span>Event log / task console</span><span id="logcount"></span></div><div class="bd" id="logbd"></div></div>
+<div id="tip"></div>
+<div id="modalRoot"></div>
+
+<script>
+/* ===================== GLOSSARY (hover tips) ===================== */
+const G={
+console:{t:"Console style",d:"Switches the simulator's terminology and default hypervisor between a VMware vSphere-style console and a Microsoft Hyper-V / System Center-style console.",h:"Pick the style you want to practice. Hosts you add default to that hypervisor; you can mix both in one lab, just as many real companies do during migrations.",a:"Other management planes: Proxmox VE web UI, Nutanix Prism, XCP-ng Xen Orchestra, Azure portal / Azure Arc for hybrid."},
+hypervisor:{t:"Hypervisor",d:"Software that runs directly on server hardware (Type 1) and carves it into isolated virtual machines, sharing CPU, memory, storage and network.",h:"Install it on each physical host, then manage hosts centrally (vCenter or SCVMM/Windows Admin Center).",a:"VMware ESXi, Microsoft Hyper-V, Proxmox VE (KVM), Nutanix AHV, XCP-ng/XenServer, Red Hat OpenShift Virtualization."},
+host:{t:"Physical host",d:"A rack server (e.g., Dell PowerEdge, HPE ProLiant, Lenovo ThinkSystem) running a hypervisor. Its cores and RAM are the pool your VMs draw from.",h:"Datacenter → Add host. Choose vendor, hypervisor, cores and RAM. Present shared storage to it and join it to a cluster for HA.",a:"Hyperconverged appliances (Nutanix, Dell VxRail, Azure Local) bundle compute + storage. Cloud IaaS (Azure VMs, AWS EC2) removes hardware entirely."},
+esxi:{t:"VMware ESXi",d:"VMware's bare-metal hypervisor, now part of Broadcom's VMware Cloud Foundation (VCF) / vSphere Foundation licensing.",h:"Install from ISO, set management IP via DCUI, then add the host to vCenter.",a:"Many orgs evaluating alternatives after the Broadcom licensing changes look at Hyper-V, Proxmox VE, Nutanix AHV or moving workloads to Azure/AWS."},
+hyperv:{t:"Microsoft Hyper-V",d:"Microsoft's Type 1 hypervisor built into Windows Server (and Azure Local, formerly Azure Stack HCI).",h:"Install-WindowsFeature Hyper-V -IncludeManagementTools, create a virtual switch, then manage via Hyper-V Manager, Windows Admin Center or SCVMM.",a:"VMware ESXi, Proxmox VE, Nutanix AHV, XCP-ng."},
+mgr:{t:"Central management",d:"vCenter Server (VMware) or System Center Virtual Machine Manager / Windows Admin Center (Microsoft) manage many hosts as one: clusters, migration, templates, permissions.",h:"Deploy the management appliance/server first, then add hosts. Back it up — it is a critical dependency.",a:"Proxmox cluster UI, Nutanix Prism Central, Azure Arc, Xen Orchestra."},
+cluster:{t:"Cluster",d:"A group of hosts managed as a single pool. Enables High Availability (restart VMs if a host dies) and load balancing.",h:"Datacenter → Create cluster, then assign hosts. All members should share storage and networks. Hyper-V Failover Clusters need matching Hyper-V hosts; vSphere clusters need ESXi hosts.",a:"Proxmox HA cluster, Nutanix cluster, Kubernetes (for containers rather than VMs)."},
+ha:{t:"High Availability (HA)",d:"If a host fails, the cluster automatically restarts its VMs on surviving hosts. There is a short outage (reboot time), not zero downtime.",h:"Enable HA on the cluster. Requires 2+ hosts, shared storage visible to all of them, and spare capacity (N+1) to absorb a failed host's VMs.",a:"VMware Fault Tolerance (zero-downtime mirror for small VMs), application-level clustering (SQL Always On, DAG for Exchange)."},
+drs:{t:"Load balancing (DRS / Dynamic Optimization)",d:"Automatically moves running VMs between hosts to balance load, and evacuates hosts entering maintenance.",h:"Enable on the cluster. In this sim, DRS lets maintenance mode auto-migrate VMs off a host.",a:"VMware DRS, SCVMM Dynamic Optimization, Hyper-V cluster node fairness, Proxmox CRS."},
+mig:{t:"Live migration (vMotion / Live Migration)",d:"Moves a running VM to another host with no downtime by copying memory state over the network.",h:"Both hosts must be online, run the same hypervisor, and see the VM's shared storage. Otherwise, power the VM off and do a cold migration.",a:"Storage vMotion / Storage Live Migration move the disks instead of the compute; shared-nothing live migration moves both."},
+snap:{t:"Snapshot / Checkpoint",d:"A point-in-time capture of a VM's disk (and optionally memory) so you can roll back after a change.",h:"Take one before patching or upgrades, then delete it once the change is verified. Snapshots are NOT backups — they live on the same storage and degrade performance if kept long.",a:"Storage-array snapshots, backup software (Veeam, Commvault, Rubrik, Azure Backup)."},
+maint:{t:"Maintenance mode",d:"Takes a host out of service safely for patching or hardware work. Running VMs must be moved off first.",h:"If the host is in a cluster with load balancing on, VMs are evacuated automatically. Otherwise migrate or shut down VMs yourself.",a:"Hyper-V: 'Pause → Drain Roles'. Proxmox: node maintenance mode."},
+failure:{t:"Host failure test",d:"Simulates a host losing power or crashing — a standard resilience test to prove your HA design works.",h:"Run it on a host with running VMs. With HA, shared storage and spare capacity, VMs restart elsewhere. Without them, they stay down until the host is repaired.",a:"Real-world: planned failover tests, chaos engineering tools (in cloud) and DR runbooks."},
+vm:{t:"Virtual machine",d:"A software computer with virtual CPU, RAM, disk and NIC, running its own OS on a host.",h:"Virtualization → New VM. Pick a role, size it, place it on a host, attach it to a network/VLAN and a datastore.",a:"Containers (Docker/Kubernetes) for app workloads, PaaS (Azure App Service), or cloud VMs."},
+vcpu:{t:"vCPU",d:"A virtual processor mapped to a physical core's time. Hosts can be overcommitted (more vCPUs than cores) because most VMs idle.",h:"Start small (2 vCPU) and grow. This sim allows up to 4 vCPU per physical core.",a:"Sizing tools: VMware Aria Operations, Azure Migrate assessment, RVTools for inventory."},
+ram:{t:"Memory (GB)",d:"RAM assigned to a VM. Unlike CPU, memory overcommit is risky; this sim does not allow powered-on VMs to exceed host RAM.",h:"Size to the workload: DCs ~4–8 GB, file servers 8 GB, SQL 16 GB+.",a:"Hyper-V Dynamic Memory and VMware ballooning reclaim idle RAM."},
+overcommit:{t:"Capacity & overcommit",d:"How much of the host's physical resources are allocated. High utilization means no room to absorb a failed host.",h:"Keep clusters at N+1: total load should fit even with your biggest host down.",a:"Capacity planning tools: Aria Operations, SCOM, Azure Monitor."},
+role:{t:"Server role",d:"The job the VM performs. Some features require a role: a Domain Controller to create AD, a DHCP role to hand out addresses, a Backup Server for backup jobs.",h:"Choose when creating the VM. Domain Controllers also provide DNS.",a:"Many roles can move to SaaS: Entra ID for identity, SharePoint/OneDrive for files, cloud backup services."},
+datastore:{t:"Datastore / Shared storage",d:"Where VM disks live. Shared storage visible to multiple hosts is what makes HA and live migration possible.",h:"Datacenter → Add storage, then present it to the hosts that should see it.",a:"See SAN, NAS, vSAN and S2D tips."},
+san:{t:"SAN (iSCSI / Fibre Channel)",d:"Block storage on a dedicated array, presented to hosts as LUNs. Shared across hosts.",h:"Use separate storage VLANs/fabric, multipathing (MPIO) and jumbo frames for iSCSI.",a:"Pure Storage, NetApp, Dell PowerStore, HPE Alletra; or go hyperconverged."},
+nas:{t:"NAS (NFS / SMB 3)",d:"File-level shared storage. VMware uses NFS datastores; Hyper-V can use SMB 3 shares.",h:"Present the export/share to all cluster hosts with proper permissions.",a:"NetApp, Synology, TrueNAS, Windows Scale-Out File Server."},
+vsan:{t:"VMware vSAN",d:"Hyperconverged storage: pools local disks of each ESXi host into one shared datastore.",h:"Needs 3+ hosts (2 with a witness) and supported disks/NICs. Shared only with vSphere hosts.",a:"Microsoft S2D, Nutanix, Ceph (Proxmox), StarWind VSAN."},
+s2d:{t:"Storage Spaces Direct (S2D)",d:"Microsoft's hyperconverged storage: pools local disks across Hyper-V cluster nodes into Cluster Shared Volumes.",h:"Requires Windows Server Datacenter or Azure Local, 2+ nodes, RDMA networking recommended.",a:"VMware vSAN, Nutanix, Ceph, StarWind."},
+local:{t:"Local disk",d:"Storage inside one host. Fast and cheap, but VMs on it cannot fail over or live-migrate without moving their disks.",h:"Fine for labs or non-critical VMs.",a:"Use shared or hyperconverged storage for anything that needs HA."},
+vlan:{t:"VLAN",d:"A virtual LAN: splits one physical network into isolated broadcast domains identified by a tag (1–4094).",h:"Network → Add VLAN with an ID, name and subnet. Typical layout: Management, Servers, Users, Storage, Guest, DMZ.",a:"Overlay networking: VMware NSX segments, Hyper-V SDN / VXLAN, cloud VNets/VPCs."},
+subnet:{t:"Subnet (CIDR)",d:"An IP address range such as 10.10.20.0/24 (254 usable addresses). Each VLAN usually maps to one subnet.",h:"Plan non-overlapping ranges per site so VPNs can route between them.",a:"IPAM tools: Windows IPAM, Infoblox, NetBox, phpIPAM."},
+vswitch:{t:"Virtual switch",d:"Software switch inside the hypervisor connecting VM NICs to physical uplinks and VLANs.",h:"VMware: Standard (per-host) or Distributed (vCenter-wide) switch with port groups. Hyper-V: External/Internal/Private switch, or Switch Embedded Teaming (SET).",a:"VMware NSX, Open vSwitch (Proxmox/KVM), Cisco ACI integration."},
+firewall:{t:"Firewall rules",d:"Ordered allow/deny rules controlling which sources can reach which destinations and ports.",h:"Network → Add rule. Allow only what's needed (e.g., Users → Servers on 443, 445) and end with a default-deny rule.",a:"Palo Alto, Fortinet FortiGate, Cisco Firepower, pfSense/OPNsense, VMware NSX distributed firewall, Windows Defender Firewall via GPO, Azure Firewall."},
+defaultdeny:{t:"Default deny",d:"A final rule that blocks anything not explicitly allowed — a core principle of least privilege.",h:"Add a rule with source any, destination any, port any, action Deny, at the bottom.",a:"Zero Trust network access (ZTNA) products extend the same idea to remote users."},
+dns:{t:"DNS",d:"Translates names (fs01.corp.local) into IP addresses. Active Directory depends on it completely.",h:"Created automatically with your AD domain. Add A records for servers and CNAMEs for friendly names.",a:"BIND, Infoblox, Azure DNS / Route 53 for public zones, Cloudflare."},
+dhcp:{t:"DHCP",d:"Automatically gives clients an IP, gateway and DNS server.",h:"Requires a VM with the DHCP Server or Domain Controller role. Create one scope per client VLAN; servers usually get static IPs.",a:"Router/firewall DHCP, ISC Kea, Infoblox."},
+vpn:{t:"Site-to-site VPN",d:"An encrypted IPsec tunnel joining two sites' networks over the internet.",h:"Network → Add VPN. Both ends need matching settings and non-overlapping subnets.",a:"SD-WAN (Fortinet, Cisco Meraki, VMware VeloCloud), Azure VPN Gateway, WireGuard, private circuits (MPLS / ExpressRoute)."},
+ad:{t:"Active Directory Domain Services",d:"Microsoft's on-premises directory: users, computers, groups and policies, with Kerberos authentication.",h:"Build a VM with the Domain Controller role, power it on, then Identity → Create domain. Build at least two DCs in production.",a:"Microsoft Entra ID (cloud-only), Samba AD, FreeIPA, JumpCloud, Okta Universal Directory."},
+dc:{t:"Domain Controller",d:"A server holding a copy of the AD database and answering logins. Also normally runs DNS.",h:"Run 2+ DCs on different hosts. Never snapshot-revert a DC in production.",a:"Read-Only DCs (RODC) for branch offices with weak physical security."},
+rodc:{t:"Read-Only Domain Controller",d:"A DC holding a read-only copy of AD, for branch offices where the server isn't physically secure.",h:"Create a VM with the RODC role at the branch site.",a:"Or skip branch DCs entirely and authenticate over VPN/SD-WAN or via Entra ID."},
+ou:{t:"Organizational Unit (OU)",d:"A folder in AD for organizing users and computers so you can delegate admin rights and link Group Policy.",h:"Create OUs by function or location (Users, Servers, Workstations, Branch).",a:"Entra ID uses administrative units and dynamic groups instead."},
+user:{t:"User accounts",d:"Identities people sign in with. Should map to one person each — no shared accounts.",h:"Add users into an OU and group. Separate admin accounts from daily-use accounts.",a:"Automate onboarding with HR-driven provisioning (Entra, Okta, SailPoint)."},
+group:{t:"Security groups",d:"Collections of users used to grant access. Assign permissions to groups, never to individual users.",h:"Example: GRP-Finance gets the Finance share; GRP-Helpdesk gets password-reset rights.",a:"Entra dynamic groups, Okta groups."},
+gpo:{t:"Group Policy Object (GPO)",d:"A bundle of settings pushed to computers and users in an OU: password rules, security baselines, BitLocker, drive maps, updates.",h:"Identity → New GPO, choose a setting and link it to an OU.",a:"Microsoft Intune configuration profiles, Ansible, Puppet, Chef, Jamf (Mac)."},
+entra:{t:"Microsoft Entra Connect / Cloud Sync",d:"Synchronizes on-prem AD users and groups to Microsoft Entra ID (formerly Azure AD) so one identity works for Microsoft 365 and SaaS. This is 'hybrid identity'.",h:"Requires an AD domain. Install the sync agent on a server and choose password hash sync or pass-through auth.",a:"Okta AD Agent, JumpCloud AD Bridge, Google Cloud Directory Sync."},
+mfa:{t:"Multi-factor authentication",d:"Requires a second proof (authenticator app, FIDO2 key, phone) besides a password. Blocks the vast majority of account takeovers.",h:"Requires users to exist. Enforce via Conditional Access for all users, admins first. Prefer phishing-resistant methods (FIDO2/passkeys).",a:"Microsoft Entra MFA, Duo, Okta Verify, YubiKey hardware keys."},
+edr:{t:"Endpoint Detection & Response",d:"Agents on servers and PCs that monitor behavior, alert on suspicious activity and can isolate a machine.",h:"Deploy to every VM; onboard via GPO, Intune or script.",a:"Microsoft Defender for Endpoint, CrowdStrike Falcon, SentinelOne, Sophos."},
+patch:{t:"Patch management",d:"Regularly applying OS, hypervisor and firmware updates.",h:"Enable a patching service, then put each host in maintenance mode and patch it. Patch VMs on a schedule with a test ring first.",a:"Azure Update Manager, Intune, vSphere Lifecycle Manager (vLCM), SCCM/ConfigMgr, NinjaOne, ConnectWise. Note: Microsoft has deprecated WSUS for new feature work."},
+siem:{t:"SIEM / log collection",d:"Centralizes logs from servers, firewalls and identity systems so you can search, alert and investigate.",h:"Forward Windows event logs, firewall logs and vCenter/SCVMM logs to the SIEM.",a:"Microsoft Sentinel, Splunk, Elastic Security, Google SecOps, Wazuh (open source)."},
+pam:{t:"Privileged access management",d:"Controls admin rights: just-in-time elevation, vaulted passwords, session recording, separate admin accounts.",h:"Remove standing Domain Admin membership; grant elevation on request with approval.",a:"Entra Privileged Identity Management, CyberArk, Delinea, BeyondTrust."},
+laps:{t:"Windows LAPS",d:"Gives every computer a unique, rotating local administrator password stored in AD/Entra.",h:"Built into current Windows; enable via GPO or Intune.",a:"PAM vaults can rotate local admin passwords too."},
+baseline:{t:"Security baseline",d:"A tested set of hardening settings (from Microsoft or CIS) applied consistently to all machines.",h:"Create a GPO with the 'Security baseline' setting and link it to your Servers/Workstations OU.",a:"CIS Benchmarks, DISA STIGs, Intune security baselines, VMware vSphere Security Configuration Guide."},
+backup:{t:"Backup jobs",d:"Scheduled copies of VMs to a separate repository so you can recover from failure, deletion or corruption.",h:"Requires a VM with the Backup Server role. Select critical VMs, choose a target. Follow 3-2-1: 3 copies, 2 media, 1 offsite (plus 1 immutable).",a:"Veeam, Commvault, Rubrik, Cohesity, Azure Backup, Nakivo."},
+immutable:{t:"Immutable backup",d:"A backup copy that cannot be modified or deleted until its retention period ends — even by an administrator.",h:"Use a hardened Linux repository, object storage with Object Lock, or an immutable cloud vault.",a:"Veeam Hardened Repository, AWS S3 Object Lock, Azure immutable blob storage, Wasabi."},
+offsite:{t:"Offsite copy",d:"A backup copy stored at a different site or cloud, so a site-wide disaster doesn't destroy both production and backups.",h:"Add a job with an Offsite/Cloud target, or a copy job.",a:"Cloud object storage, a secondary datacenter, tape vaulting."},
+restore:{t:"Restore test",d:"Actually recovering a VM from backup to prove it works. An untested backup is a hope, not a plan.",h:"Run restore tests on a schedule (e.g., quarterly) into an isolated network.",a:"Veeam SureBackup / Rubrik automated recovery testing."},
+rpo:{t:"RPO / RTO",d:"Recovery Point Objective = how much data you can afford to lose (time between backups). Recovery Time Objective = how long you can be down.",h:"Agree on these with the business per application, then design backup frequency and DR to meet them.",a:"DR orchestration: Azure Site Recovery, VMware Live Recovery (SRM), Zerto."},
+scenario:{t:"Build scenarios",d:"Guided challenges with objectives checked live against your lab. Each mirrors a real IT project.",h:"Start a scenario; the checklist updates as you build. Hints point to the right page.",a:"Real labs: Microsoft Learn sandboxes, VMware Hands-on Labs, a home lab on Proxmox or Hyper-V."},
+posture:{t:"Security posture score",d:"A rough measure of how many core defensive controls are in place across identity, endpoints, network and backups.",h:"Enable controls on the Security page and build the supporting pieces they require.",a:"Microsoft Secure Score, CIS Controls self-assessment, cyber-insurance questionnaires."}
+};
+
+/* ===================== TERMINOLOGY ===================== */
+const TERMS={
+ vmware:{hv:"ESXi",mgr:"vCenter Server",snap:"Snapshot",mig:"vMotion",cluster:"vSphere Cluster",vsw:"Distributed Switch (vDS)",console:"vSphere Client",maint:"Enter Maintenance Mode",store:"Datastore"},
+ microsoft:{hv:"Hyper-V",mgr:"SCVMM / Windows Admin Center",snap:"Checkpoint",mig:"Live Migration",cluster:"Failover Cluster",vsw:"Hyper-V Switch (SET)",console:"Hyper-V Manager",maint:"Pause & Drain Roles",store:"Cluster Shared Volume"}
+};
+const HVNAME={vmware:"ESXi 8.0",microsoft:"Hyper-V (Windows Server 2025)"};
+const ROLES=["General Server","Domain Controller","Read-Only DC (RODC)","DHCP Server","File Server","SQL Server","Web Server","Backup Server","Log Collector","Remote Desktop"];
+const OSES=["Windows Server 2025","Windows Server 2022","Ubuntu Server 24.04","Red Hat Enterprise Linux 9","Windows 11 Enterprise"];
+const STYPES={san:"SAN (iSCSI)",nas:"NAS (NFS/SMB)",vsan:"vSAN",s2d:"Storage Spaces Direct",local:"Local disk"};
+const GPOSET=["Security baseline","Password & lockout policy","BitLocker encryption","Windows LAPS","Windows Update rings","Drive mappings","Firewall policy"];
+const CRIT_ROLES=["Domain Controller","Read-Only DC (RODC)","File Server","SQL Server","DHCP Server"];
+
+/* ===================== STATE ===================== */
+function fresh(){return{platform:"vmware",hosts:[],clusters:[],storage:[],vms:[],vlans:[],switches:[],fw:[],dns:[],dhcp:[],vpn:[],
+ ad:{domain:"",ous:[],users:[],groups:[],gpos:[],entra:false},
+ sec:{mfa:false,edr:false,patch:false,siem:false,pam:false},
+ backups:[],flags:{},log:[],seq:1,scenario:null,tab:"dash"}}
+let S=load()||fresh();
+function save(){try{localStorage.setItem("itlab-v1",JSON.stringify(S))}catch(e){}}
+function load(){try{const r=localStorage.getItem("itlab-v1");return r?Object.assign(fresh(),JSON.parse(r)):null}catch(e){return null}}
+const uid=p=>p+(S.seq++);
+const T=k=>TERMS[S.platform][k];
+const byId=(arr,id)=>arr.find(x=>x.id===id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const tip=k=>`<span class="tip-ic" data-tip="${k}">?</span>`;
+function log(msg,lvl="info"){const t=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});S.log.unshift({t,msg,lvl});S.log=S.log.slice(0,200)}
+
+/* ===================== DERIVED ===================== */
+function hostUse(h){const vms=S.vms.filter(v=>v.hostId===h.id&&v.power==="on");return{vcpu:vms.reduce((a,v)=>a+v.vcpu,0),ram:vms.reduce((a,v)=>a+v.ram,0),count:S.vms.filter(v=>v.hostId===h.id).length}}
+function fits(h,vm){const u=hostUse(h);return u.vcpu+vm.vcpu<=h.cpu*4&&u.ram+vm.ram<=h.ram}
+function isShared(st){return st&&st.type!=="local"}
+function hostSees(h,stId){const st=byId(S.storage,stId);return st&&st.hostIds.includes(h.id)}
+function vmsByRole(r){return S.vms.filter(v=>v.role===r)}
+function runningRole(r){return S.vms.some(v=>v.role===r&&v.power==="on")}
+function backedUp(vm){return S.backups.some(b=>b.vmIds.includes(vm.id))}
+function posture(){
+ const checks=[
+  ["MFA enforced",S.sec.mfa],["EDR on endpoints",S.sec.edr],["Patch management",S.sec.patch],["Central logging (SIEM)",S.sec.siem],
+  ["Privileged access mgmt",S.sec.pam],["Security baseline GPO",S.ad.gpos.some(g=>g.setting==="Security baseline")],
+  ["Windows LAPS",S.ad.gpos.some(g=>g.setting==="Windows LAPS")],["Default-deny firewall",S.fw.some(r=>r.action==="Deny"&&r.src==="any"&&r.dst==="any")],
+  ["Critical VMs backed up",critCovered()],["Immutable backup copy",S.backups.some(b=>b.target==="immutable")],
+  ["Offsite backup copy",S.backups.some(b=>b.target==="offsite")],["Restore tested",!!S.flags.restoreTested]];
+ return{checks,score:Math.round(checks.filter(c=>c[1]).length/checks.length*100)}}
+function critCovered(){const c=S.vms.filter(v=>CRIT_ROLES.includes(v.role));return c.length>0&&c.every(backedUp)}
+
+/* ===================== ACTIONS ===================== */
+const A={
+ plat(v){S.platform=v;log(`Console switched to ${v==="vmware"?"VMware vSphere":"Microsoft Hyper-V"} style`)},
+ tab(v){S.tab=v},
+ reset(){confirmBox("Reset the entire lab? Everything you've built will be cleared.",()=>{const p=S.platform;S=fresh();S.platform=p;log("Lab reset","warn");commit()})},
+ sample(){confirmBox("Replace the current lab with a sample two-host environment?",()=>{buildSample();commit()})},
+ logtoggle(){document.getElementById("log").classList.toggle("min")},
+ addHost(){const n=S.hosts.length+1;form("Add physical host",[
+   {k:"name",label:"Hostname",value:(S.platform==="vmware"?"esx":"hv")+String(n).padStart(2,"0")+".corp.local"},
+   {k:"vendor",label:"Server model",type:"select",options:["Dell PowerEdge R760","HPE ProLiant DL380 Gen11","Lenovo ThinkSystem SR650 V3","Cisco UCS C240 M7"]},
+   {k:"hyp",label:"Hypervisor",tip:"hypervisor",type:"select",options:[["vmware",HVNAME.vmware],["microsoft",HVNAME.microsoft]],value:S.platform},
+   {k:"cpu",label:"Physical cores",tip:"vcpu",type:"number",value:32},
+   {k:"ram",label:"RAM (GB)",tip:"ram",type:"number",value:256}],f=>{
+   if(!f.name)return"Hostname required";if(S.hosts.some(h=>h.name===f.name))return"Hostname already exists";
+   const h={id:uid("h"),name:f.name,vendor:f.vendor,hyp:f.hyp,cpu:Math.max(4,+f.cpu),ram:Math.max(16,+f.ram),clusterId:null,status:"online",patched:false};
+   S.hosts.push(h);log(`Host ${h.name} (${HVNAME[h.hyp]}) added to ${T("mgr")}`,"ok")})},
+ delHost(id){const h=byId(S.hosts,id);if(S.vms.some(v=>v.hostId===id))return toast(`Move or delete the VMs on ${h.name} first.`);
+   S.hosts=S.hosts.filter(x=>x.id!==id);S.storage.forEach(s=>s.hostIds=s.hostIds.filter(x=>x!==id));log(`Host ${h.name} removed`,"warn")},
+ addCluster(){if(S.hosts.length<1)return toast("Add hosts first.");form(`Create ${T("cluster")}`,[
+   {k:"name",label:"Cluster name",value:"CL-"+(S.platform==="vmware"?"VSPHERE":"HV")+"-0"+(S.clusters.length+1)},
+   {k:"hyp",label:"Cluster type",type:"select",options:[["vmware","vSphere cluster (ESXi hosts)"],["microsoft","Hyper-V Failover Cluster"]],value:S.platform},
+   {k:"ha",label:"High Availability",tip:"ha",type:"checkbox",value:true},
+   {k:"drs",label:"Load balancing / auto-evacuate",tip:"drs",type:"checkbox",value:true},
+   {k:"hosts",label:"Member hosts (same hypervisor only)",type:"checks",options:S.hosts.filter(h=>!h.clusterId).map(h=>[h.id,`${h.name} (${TERMS[h.hyp].hv})`])}],f=>{
+   const members=(f.hosts||[]).map(id=>byId(S.hosts,id));if(members.some(h=>h.hyp!==f.hyp))return"All member hosts must run the cluster's hypervisor.";
+   const c={id:uid("c"),name:f.name,hyp:f.hyp,ha:!!f.ha,drs:!!f.drs};S.clusters.push(c);members.forEach(h=>h.clusterId=c.id);
+   log(`${c.hyp==="vmware"?"vSphere cluster":"Failover cluster"} ${c.name} created with ${members.length} host(s)`,"ok");
+   if(c.ha&&members.length<2)log(`${c.name}: HA needs at least 2 hosts to be useful`,"warn")})},
+ clusterHosts(id){const c=byId(S.clusters,id);form(`Members of ${c.name}`,[{k:"hosts",label:"Hosts",type:"checks",
+   options:S.hosts.filter(h=>h.hyp===c.hyp&&(!h.clusterId||h.clusterId===id)).map(h=>[h.id,h.name]),value:S.hosts.filter(h=>h.clusterId===id).map(h=>h.id)}],f=>{
+   S.hosts.forEach(h=>{if(h.clusterId===id)h.clusterId=null});(f.hosts||[]).forEach(hid=>byId(S.hosts,hid).clusterId=id);log(`${c.name} membership updated`)})},
+ toggleCl(id,k){const c=byId(S.clusters,id);c[k]=!c[k];log(`${c.name}: ${k.toUpperCase()} ${c[k]?"enabled":"disabled"}`)},
+ delCluster(id){const c=byId(S.clusters,id);S.hosts.forEach(h=>{if(h.clusterId===id)h.clusterId=null});S.clusters=S.clusters.filter(x=>x.id!==id);log(`Cluster ${c.name} deleted`,"warn")},
+ addStorage(){form("Add storage",[
+   {k:"name",label:"Name",value:"DS-"+String(S.storage.length+1).padStart(2,"0")},
+   {k:"type",label:"Type",tip:"datastore",type:"select",options:Object.entries(STYPES)},
+   {k:"cap",label:"Capacity (TB)",type:"number",value:20},
+   {k:"hosts",label:"Present to hosts",type:"checks",options:S.hosts.map(h=>[h.id,h.name]),value:S.hosts.map(h=>h.id)}],f=>{
+   let hosts=(f.hosts||[]);
+   if(f.type==="local"&&hosts.length!==1)return"Local disk belongs to exactly one host.";
+   if(f.type==="vsan"&&hosts.some(id=>byId(S.hosts,id).hyp!=="vmware"))return"vSAN can only be presented to ESXi hosts.";
+   if(f.type==="s2d"&&hosts.some(id=>byId(S.hosts,id).hyp!=="microsoft"))return"S2D can only be presented to Hyper-V hosts.";
+   if((f.type==="vsan"||f.type==="s2d")&&hosts.length<2)return"Hyperconverged storage needs at least 2 hosts.";
+   S.storage.push({id:uid("s"),name:f.name,type:f.type,cap:+f.cap||1,hostIds:hosts});log(`${STYPES[f.type]} ${f.name} (${f.cap} TB) presented to ${hosts.length} host(s)`,"ok")})},
+ delStorage(id){if(S.vms.some(v=>v.storageId===id))return toast("VMs still live on this storage.");S.storage=S.storage.filter(s=>s.id!==id);log("Storage removed","warn")},
+ hostMaint(id){const h=byId(S.hosts,id);
+   if(h.status==="maintenance"){h.status="online";log(`${h.name} exited maintenance`,"ok");return}
+   if(h.status==="failed")return toast("Repair the host first.");
+   const running=S.vms.filter(v=>v.hostId===id&&v.power==="on");const c=byId(S.clusters,h.clusterId);
+   if(running.length&&!(c&&c.drs))return toast(`${h.name} has ${running.length} running VM(s). Migrate them, shut them down, or enable load balancing on its cluster.`);
+   for(const v of running){const t=findTarget(v,h,true);if(!t)return toast(`No host in ${c.name} can take ${v.name} (capacity or storage). Maintenance aborted.`);v.hostId=t.id;log(`${T("mig")}: ${v.name} → ${t.name}`)}
+   h.status="maintenance";log(`${h.name} entered maintenance mode`,"ok")},
+ patchHost(id){const h=byId(S.hosts,id);if(!S.sec.patch)return toast("Enable Patch management on the Security page first.");
+   if(h.status!=="maintenance")return toast(`Put ${h.name} in maintenance mode before patching.`);h.patched=true;log(`${h.name} patched to latest build`,"ok")},
+ failHost(id){const h=byId(S.hosts,id);if(h.status==="failed"){h.status="online";log(`${h.name} repaired and back online`,"ok");return}
+   const running=S.vms.filter(v=>v.hostId===id&&v.power==="on");h.status="failed";log(`HOST FAILURE: ${h.name} is unreachable`,"bad");
+   const c=byId(S.clusters,h.clusterId);let ok=0;
+   for(const v of running){let t=null;if(c&&c.ha)t=findTarget(v,h,false);
+     if(t){v.hostId=t.id;ok++;log(`HA restarted ${v.name} on ${t.name}`,"ok")}else{v.power="down";log(`${v.name} is DOWN (${!c?"host not clustered":!c.ha?"HA disabled":"no host with capacity + shared storage"})`,"bad")}}
+   if(running.length&&ok===running.length){S.flags.haSurvived=true;log(`Resilience test passed: all ${ok} VM(s) recovered`,"ok")}},
+ newVM(){const hs=S.hosts.filter(h=>h.status==="online");if(!hs.length)return toast("Add an online host first.");
+   form("New virtual machine",[
+   {k:"name",label:"VM name",value:"SRV"+String(S.vms.length+1).padStart(2,"0")},
+   {k:"role",label:"Server role",tip:"role",type:"select",options:ROLES},
+   {k:"os",label:"Guest OS",type:"select",options:OSES},
+   {k:"vcpu",label:"vCPU",tip:"vcpu",type:"number",value:2},
+   {k:"ram",label:"Memory (GB)",tip:"ram",type:"number",value:8},
+   {k:"disk",label:"Disk (GB)",type:"number",value:80},
+   {k:"hostId",label:"Place on host",tip:"host",type:"select",options:hs.map(h=>[h.id,`${h.name} — ${TERMS[h.hyp].hv}`])},
+   {k:"storageId",label:"Store disk on",tip:"datastore",type:"select",value:(S.storage.find(s=>isShared(s))||S.storage[0]||{}).id,options:[["","(choose)"]].concat(S.storage.map(s=>[s.id,`${s.name} — ${STYPES[s.type]}`]))},
+   {k:"vlanId",label:"Network / VLAN",tip:"vlan",type:"select",options:[["","(none — isolated)"]].concat(S.vlans.map(v=>[v.id,`VLAN ${v.vlan} ${v.name}`]))},
+   {k:"on",label:"Power on after create",type:"checkbox",value:true}],f=>{
+   const h=byId(S.hosts,f.hostId);if(!f.storageId)return"Choose storage (add storage on the Datacenter page if none).";
+   if(!hostSees(h,f.storageId))return`${h.name} can't see that storage. Present it to the host first.`;
+   if(S.vms.some(v=>v.name===f.name))return"VM name already used.";
+   const vm={id:uid("v"),name:f.name,role:f.role,os:f.os,vcpu:Math.max(1,+f.vcpu),ram:Math.max(1,+f.ram),disk:+f.disk||40,hostId:h.id,storageId:f.storageId,vlanId:f.vlanId,power:"off",snaps:[]};
+   if(f.on&&!fits(h,vm))return`${h.name} lacks capacity to power this on. Lower size or pick another host.`;
+   if(f.on)vm.power="on";S.vms.push(vm);
+   if(vm.role.includes("Domain Controller")||vm.role.includes("RODC")){}
+   log(`VM ${vm.name} (${vm.role}) created on ${h.name}${vm.power==="on"?" and powered on":""}`,"ok")})},
+ power(id){const v=byId(S.vms,id),h=byId(S.hosts,v.hostId);
+   if(v.power==="on"){v.power="off";log(`${v.name} shut down`);return}
+   if(h.status!=="online")return toast(`${h.name} is ${h.status}. Migrate the VM to a healthy host first.`);
+   if(!fits(h,v))return toast(`${h.name} is out of capacity.`);v.power="on";log(`${v.name} powered on`,"ok")},
+ snap(id){const v=byId(S.vms,id);v.snaps.push(new Date().toLocaleString());log(`${T("snap")} taken of ${v.name}`)},
+ revert(id){const v=byId(S.vms,id);if(!v.snaps.length)return;
+   if(v.role.includes("Domain Controller")||v.role.includes("RODC"))log(`Caution: reverting a domain controller can cause USN rollback in multi-DC domains`,"warn");
+   log(`${v.name} reverted to ${T("snap").toLowerCase()} from ${v.snaps[v.snaps.length-1]}`)},
+ delSnaps(id){const v=byId(S.vms,id);v.snaps=[];log(`${T("snap")}s consolidated for ${v.name}`)},
+ migrate(id){const v=byId(S.vms,id),src=byId(S.hosts,v.hostId);const others=S.hosts.filter(h=>h.id!==src.id&&h.status==="online");
+   if(!others.length)return toast("No other online hosts.");
+   form(`Migrate ${v.name}`,[{k:"to",label:"Destination host",tip:"mig",type:"select",options:others.map(h=>[h.id,`${h.name} (${TERMS[h.hyp].hv})`])}],f=>{
+   const t=byId(S.hosts,f.to);
+   if(v.power==="on"){
+     if(t.hyp!==src.hyp)return"Live migration can't cross hypervisors. Power off and convert (e.g., VMware Converter / SCVMM V2V / Veeam restore).";
+     if(!hostSees(t,v.storageId)||!isShared(byId(S.storage,v.storageId)))return`Live ${T("mig")} needs the VM's storage shared with ${t.name}. Present the storage or power off for a cold migration.`;
+     if(!fits(t,v))return`${t.name} lacks capacity.`;v.hostId=t.id;log(`${T("mig")}: ${v.name} ${src.name} → ${t.name} (no downtime)`,"ok");S.flags.liveMig=true}
+   else{if(!hostSees(t,v.storageId)){const st=S.storage.find(s=>s.hostIds.includes(t.id));if(!st)return`${t.name} has no storage.`;v.storageId=st.id;log(`Disks of ${v.name} copied to ${st.name}`)}
+     if(t.hyp!==src.hyp)log(`${v.name} converted ${TERMS[src.hyp].hv} → ${TERMS[t.hyp].hv} (V2V)`,"warn");
+     v.hostId=t.id;log(`Cold migration: ${v.name} → ${t.name}`,"ok")}})},
+ delVM(id){const v=byId(S.vms,id);confirmBox(`Delete ${v.name}? This cannot be undone.`,()=>{S.vms=S.vms.filter(x=>x.id!==id);S.backups.forEach(b=>b.vmIds=b.vmIds.filter(x=>x!==id));
+   if((v.role==="Domain Controller")&&!S.vms.some(x=>x.role==="Domain Controller")&&S.ad.domain)log(`WARNING: last writable DC deleted — domain ${S.ad.domain} has no DC`,"bad");log(`VM ${v.name} deleted`,"warn");commit()})},
+ addVlan(){form("Add VLAN",[{k:"vlan",label:"VLAN ID (1–4094)",tip:"vlan",type:"number",value:10*(S.vlans.length+1)},{k:"name",label:"Name",value:["Management","Servers","Users","Storage","Guest","DMZ"][S.vlans.length]||"VLAN"},
+   {k:"subnet",label:"Subnet (CIDR)",tip:"subnet",value:`10.10.${10*(S.vlans.length+1)}.0/24`},{k:"site",label:"Site",value:"HQ"}],f=>{
+   const id=+f.vlan;if(!(id>=1&&id<=4094))return"VLAN ID must be 1–4094.";if(S.vlans.some(v=>v.vlan===id))return"VLAN ID already exists.";
+   if(!/^\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/.test(f.subnet))return"Subnet must look like 10.10.20.0/24";
+   if(S.vlans.some(v=>v.subnet===f.subnet))return"Subnet overlaps an existing VLAN.";
+   S.vlans.push({id:uid("n"),vlan:id,name:f.name,subnet:f.subnet,site:f.site||"HQ"});log(`VLAN ${id} (${f.name}, ${f.subnet}) created at ${f.site}`,"ok")})},
+ delVlan(id){if(S.vms.some(v=>v.vlanId===id))return toast("VMs are attached to this VLAN.");S.vlans=S.vlans.filter(v=>v.id!==id);log("VLAN removed","warn")},
+ addSwitch(){form("Add virtual switch",[{k:"name",label:"Name",value:S.platform==="vmware"?"vDS-Prod":"SET-Prod"},
+   {k:"type",label:"Type",tip:"vswitch",type:"select",options:S.platform==="vmware"?["vSphere Standard Switch","vSphere Distributed Switch"]:["Hyper-V External Switch","Switch Embedded Teaming (SET)","Hyper-V Internal Switch","Hyper-V Private Switch"]},
+   {k:"uplinks",label:"Physical uplinks",type:"number",value:2},{k:"vlans",label:"Carry VLANs",type:"checks",options:S.vlans.map(v=>[v.id,`${v.vlan} ${v.name}`]),value:S.vlans.map(v=>v.id)}],f=>{
+   S.switches.push({id:uid("w"),name:f.name,type:f.type,uplinks:+f.uplinks,vlanIds:f.vlans||[]});log(`${f.type} ${f.name} created`,"ok");if(+f.uplinks<2)log("Single uplink = no NIC redundancy","warn")})},
+ delSwitch(id){S.switches=S.switches.filter(s=>s.id!==id)},
+ addFw(){const opts=["any"].concat(S.vlans.map(v=>v.name));form("Add firewall rule",[{k:"name",label:"Rule name",value:"Rule "+(S.fw.length+1)},
+   {k:"src",label:"Source",type:"select",options:opts},{k:"dst",label:"Destination",type:"select",options:opts},
+   {k:"port",label:"Ports",value:"443"},{k:"action",label:"Action",type:"select",options:["Allow","Deny"]}],f=>{
+   S.fw.push({id:uid("f"),name:f.name,src:f.src,dst:f.dst,port:f.port||"any",action:f.action});log(`Firewall rule '${f.name}' ${f.action} ${f.src}→${f.dst}:${f.port}`,"ok");
+   const dd=S.fw.findIndex(r=>r.action==="Deny"&&r.src==="any"&&r.dst==="any");if(dd>-1&&dd<S.fw.length-1)log("Rules after the default-deny rule will never match — move it to the bottom","warn")})},
+ addDefaultDeny(){if(S.fw.some(r=>r.action==="Deny"&&r.src==="any"&&r.dst==="any"))return toast("Default deny already exists.");S.fw.push({id:uid("f"),name:"Default deny",src:"any",dst:"any",port:"any",action:"Deny"});log("Default-deny rule added at bottom","ok")},
+ fwUp(id){const i=S.fw.findIndex(r=>r.id===id);if(i>0)[S.fw[i-1],S.fw[i]]=[S.fw[i],S.fw[i-1]]},
+ fwDown(id){const i=S.fw.findIndex(r=>r.id===id);if(i<S.fw.length-1)[S.fw[i+1],S.fw[i]]=[S.fw[i],S.fw[i+1]]},
+ delFw(id){S.fw=S.fw.filter(r=>r.id!==id)},
+ addDns(){if(!S.ad.domain)return toast("Create an AD domain first (it hosts DNS).");form("Add DNS record",[{k:"name",label:"Host name",value:"fs01"},{k:"type",label:"Type",type:"select",options:["A","CNAME","MX","SRV"]},{k:"value",label:"Value",value:"10.10.20.20"}],f=>{
+   S.dns.push({id:uid("d"),name:f.name,type:f.type,value:f.value});log(`DNS ${f.type} ${f.name}.${S.ad.domain} → ${f.value}`,"ok")})},
+ delDns(id){S.dns=S.dns.filter(r=>r.id!==id)},
+ addDhcp(){if(!S.vms.some(v=>(v.role==="DHCP Server"||v.role==="Domain Controller")&&v.power==="on"))return toast("Needs a running VM with the DHCP Server or Domain Controller role.");
+   if(!S.vlans.length)return toast("Create a VLAN first.");form("Add DHCP scope",[{k:"vlanId",label:"For VLAN",tip:"dhcp",type:"select",options:S.vlans.map(v=>[v.id,`${v.vlan} ${v.name} (${v.subnet})`])},{k:"range",label:"Range",value:"100–250"},{k:"lease",label:"Lease (days)",type:"number",value:8}],f=>{
+   if(S.dhcp.some(d=>d.vlanId===f.vlanId))return"That VLAN already has a scope.";const v=byId(S.vlans,f.vlanId);S.dhcp.push({id:uid("p"),vlanId:f.vlanId,range:f.range,lease:+f.lease});log(`DHCP scope for ${v.name} (${v.subnet}) activated`,"ok")})},
+ delDhcp(id){S.dhcp=S.dhcp.filter(d=>d.id!==id)},
+ addVpn(){form("Add site-to-site VPN",[{k:"name",label:"Tunnel name",value:"HQ-to-Branch"},{k:"peer",label:"Remote site",value:"Branch-Dallas"},
+   {k:"type",label:"Technology",tip:"vpn",type:"select",options:["IPsec IKEv2","SD-WAN overlay","Azure VPN Gateway","WireGuard"]},{k:"psk",label:"Authentication",type:"select",options:["Certificate","Pre-shared key"]}],f=>{
+   S.vpn.push({id:uid("t"),name:f.name,peer:f.peer,type:f.type,auth:f.psk,status:"up"});log(`VPN ${f.name} to ${f.peer} established (${f.type})`,"ok")})},
+ delVpn(id){S.vpn=S.vpn.filter(t=>t.id!==id)},
+ createDomain(){if(!runningRole("Domain Controller"))return toast("Create and power on a VM with the Domain Controller role first (Virtualization page).");
+   form("Promote to domain controller — new forest",[{k:"domain",label:"Root domain name",tip:"ad",value:"corp.local"},{k:"lvl",label:"Functional level",type:"select",options:["Windows Server 2025","Windows Server 2016"]}],f=>{
+   if(!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(f.domain))return"Use a name like corp.local or ad.contoso.com";
+   S.ad.domain=f.domain.toLowerCase();S.ad.ous=["Users","Servers","Workstations"];const dc=S.vms.find(v=>v.role==="Domain Controller"&&v.power==="on");
+   S.dns.push({id:uid("d"),name:dc.name.toLowerCase(),type:"A",value:"10.10.20.10"});log(`Forest ${S.ad.domain} created; ${dc.name} is the first DC with integrated DNS`,"ok")})},
+ addOU(){if(!S.ad.domain)return toast("Create the domain first.");form("New OU",[{k:"n",label:"OU name",tip:"ou",value:"Branch"}],f=>{if(S.ad.ous.includes(f.n))return"Exists";S.ad.ous.push(f.n);log(`OU=${f.n} created`,"ok")})},
+ addGroup(){if(!S.ad.domain)return toast("Create the domain first.");form("New security group",[{k:"n",label:"Group name",tip:"group",value:"GRP-Finance"}],f=>{if(S.ad.groups.includes(f.n))return"Exists";S.ad.groups.push(f.n);log(`Group ${f.n} created`,"ok")})},
+ addUser(){if(!S.ad.domain)return toast("Create the domain first.");form("New user",[{k:"n",label:"Username",tip:"user",value:"jdoe"},{k:"ou",label:"OU",type:"select",options:S.ad.ous},
+   {k:"g",label:"Groups",type:"checks",options:S.ad.groups.map(g=>[g,g])},{k:"adm",label:"Admin account",type:"checkbox",value:false}],f=>{
+   if(S.ad.users.some(u=>u.n===f.n))return"Username exists";S.ad.users.push({n:f.n,ou:f.ou,groups:f.g||[],admin:!!f.adm});log(`User ${f.n}@${S.ad.domain} created in OU=${f.ou}`,"ok")})},
+ bulkUsers(){if(!S.ad.domain)return toast("Create the domain first.");const names=["asmith","bjones","cgarcia","dlee","epatel","fnguyen","gbrown","hkim"];let n=0;
+   for(const u of names){if(!S.ad.users.some(x=>x.n===u)){S.ad.users.push({n:u,ou:"Users",groups:S.ad.groups.slice(0,1),admin:false});n++}if(n>=5)break}log(`Bulk import: ${n} users from HR CSV`,"ok")},
+ delUser(n){S.ad.users=S.ad.users.filter(u=>u.n!==n)},
+ addGPO(){if(!S.ad.domain)return toast("Create the domain first.");form("New Group Policy Object",[{k:"n",label:"GPO name",value:"Baseline-Servers"},{k:"setting",label:"Primary setting",tip:"gpo",type:"select",options:GPOSET},{k:"ou",label:"Link to OU",type:"select",options:S.ad.ous}],f=>{
+   S.ad.gpos.push({id:uid("g"),n:f.n,setting:f.setting,ou:f.ou});log(`GPO '${f.n}' (${f.setting}) linked to OU=${f.ou}`,"ok")})},
+ delGPO(id){S.ad.gpos=S.ad.gpos.filter(g=>g.id!==id)},
+ entra(){if(!S.ad.domain)return toast("Needs an AD domain to sync from.");S.ad.entra=!S.ad.entra;log(S.ad.entra?`Entra Connect sync enabled: ${S.ad.users.length} users, ${S.ad.groups.length} groups synced to Entra ID`:"Entra sync disabled",S.ad.entra?"ok":"warn")},
+ sec(k){const need={mfa:()=>S.ad.users.length?null:"Create users first (Identity page).",
+   edr:()=>S.vms.length?null:"No VMs to protect yet.",
+   siem:()=>runningRole("Log Collector")||S.ad.entra?null:"Needs a running Log Collector VM, or Entra sync for cloud SIEM ingestion.",
+   pam:()=>S.ad.domain?null:"Needs a domain.",patch:()=>null};
+   if(!S.sec[k]){const e=need[k]();if(e)return toast(e)}S.sec[k]=!S.sec[k];log(`${k.toUpperCase()} ${S.sec[k]?"enabled":"disabled"}`,S.sec[k]?"ok":"warn")},
+ addBackup(){if(!runningRole("Backup Server"))return toast("Create and power on a VM with the Backup Server role first.");
+   form("New backup job",[{k:"n",label:"Job name",value:"Daily-Critical"},{k:"vms",label:"VMs to protect",tip:"backup",type:"checks",options:S.vms.map(v=>[v.id,`${v.name} (${v.role})`]),value:S.vms.filter(v=>CRIT_ROLES.includes(v.role)).map(v=>v.id)},
+   {k:"target",label:"Target repository",type:"select",options:[["local","Local repository"],["immutable","Hardened immutable repository"],["offsite","Offsite / cloud object storage"]]},
+   {k:"freq",label:"Frequency (RPO)",tip:"rpo",type:"select",options:["Every 4 hours","Daily","Weekly"]}],f=>{
+   if(!(f.vms||[]).length)return"Select at least one VM.";S.backups.push({id:uid("b"),n:f.n,vmIds:f.vms,target:f.target,freq:f.freq,last:"never"});log(`Backup job ${f.n} created (${f.vms.length} VMs → ${f.target})`,"ok")})},
+ runBackup(id){const b=byId(S.backups,id);b.last=new Date().toLocaleString();log(`Backup job ${b.n} completed: ${b.vmIds.length} VM(s) processed`,"ok")},
+ testRestore(id){const b=byId(S.backups,id);if(b.last==="never")return toast("Run the job at least once before testing a restore.");S.flags.restoreTested=true;log(`Restore test: ${b.vmIds.length} VM(s) booted in isolated sandbox and verified`,"ok")},
+ delBackup(id){S.backups=S.backups.filter(b=>b.id!==id)},
+ startScn(id){S.scenario={id,start:Date.now(),done:false};S.flags={};log(`Scenario started: ${SCN.find(s=>s.id===id).title}`,"ok")},
+ stopScn(){S.scenario=null;log("Scenario abandoned","warn")}
+};
+function findTarget(v,src,live){const c=byId(S.clusters,src.clusterId);if(!c)return null;
+ return S.hosts.filter(h=>h.id!==src.id&&h.clusterId===c.id&&h.status==="online"&&hostSees(h,v.storageId)&&isShared(byId(S.storage,v.storageId)))
+  .sort((a,b)=>hostUse(a).ram-hostUse(b).ram).find(h=>fits(h,v))||null}
+
+function buildSample(){const p=S.platform;S=fresh();S.platform=p;const hyp=p;
+ const pre=p==="vmware"?"esx":"hv";
+ const h1={id:uid("h"),name:pre+"01.corp.local",vendor:"Dell PowerEdge R760",hyp,cpu:32,ram:256,clusterId:null,status:"online",patched:false};
+ const h2={id:uid("h"),name:pre+"02.corp.local",vendor:"Dell PowerEdge R760",hyp,cpu:32,ram:256,clusterId:null,status:"online",patched:false};
+ S.hosts.push(h1,h2);S.storage.push({id:uid("s"),name:"DS-SAN-01",type:"san",cap:40,hostIds:[h1.id,h2.id]});
+ ["Management","Servers","Users"].forEach((n,i)=>S.vlans.push({id:uid("n"),vlan:(i+1)*10,name:n,subnet:`10.10.${(i+1)*10}.0/24`,site:"HQ"}));
+ const st=S.storage[0].id,srv=S.vlans[1].id;
+ S.vms.push({id:uid("v"),name:"DC01",role:"Domain Controller",os:"Windows Server 2025",vcpu:2,ram:8,disk:80,hostId:h1.id,storageId:st,vlanId:srv,power:"on",snaps:[]});
+ S.vms.push({id:uid("v"),name:"FS01",role:"File Server",os:"Windows Server 2025",vcpu:4,ram:16,disk:500,hostId:h2.id,storageId:st,vlanId:srv,power:"on",snaps:[]});
+ log("Sample environment loaded: 2 hosts, SAN, 3 VLANs, DC01 and FS01 (not clustered, no domain yet)","ok")}
+
+/* ===================== SCENARIOS ===================== */
+const dcOn=()=>runningRole("Domain Controller");
+const SCN=[
+ {id:"s1",title:"Small business foundation",lvl:"Beginner",desc:"A 40-person company is moving off a single closet server. Build a proper two-host virtual environment with a domain, networks and DHCP.",
+  obj:[["Two online hosts",()=>S.hosts.filter(h=>h.status!=="failed").length>=2,"Datacenter → Add host"],
+   ["Shared storage presented to both hosts",()=>S.storage.some(s=>isShared(s)&&s.hostIds.length>=2),"Datacenter → Add storage (SAN or NAS)"],
+   ["Servers and Users VLANs",()=>S.vlans.length>=2,"Network → Add VLAN"],
+   ["A running Domain Controller VM",dcOn,"Virtualization → New VM, role Domain Controller"],
+   ["AD domain created",()=>!!S.ad.domain,"Identity → Create domain"],
+   ["DHCP scope for the Users VLAN",()=>S.dhcp.length>=1,"Network → DHCP scope"],
+   ["At least 5 user accounts",()=>S.ad.users.length>=5,"Identity → Import 5 users"]]},
+ {id:"s2",title:"High-availability cluster",lvl:"Intermediate",desc:"Leadership wants no single server to take the business down. Cluster the hosts, enable HA and prove it with a failure test.",
+  obj:[["Cluster with 2+ hosts",()=>S.clusters.some(c=>S.hosts.filter(h=>h.clusterId===c.id).length>=2),"Datacenter → Create cluster"],
+   ["HA enabled on that cluster",()=>S.clusters.some(c=>c.ha&&S.hosts.filter(h=>h.clusterId===c.id).length>=2),"Toggle HA on the cluster card"],
+   ["3+ VMs on clustered hosts using shared storage",()=>S.vms.filter(v=>{const h=byId(S.hosts,v.hostId);return h&&h.clusterId&&isShared(byId(S.storage,v.storageId))}).length>=3,"Create VMs on clustered hosts"],
+   [`Perform a live migration`,()=>!!S.flags.liveMig,"Virtualization → Migrate a running VM"],
+   ["Survive a host failure test with all VMs recovered",()=>!!S.flags.haSurvived,"Datacenter → Simulate failure on a host with running VMs"]]},
+ {id:"s3",title:"Hybrid identity rollout",lvl:"Intermediate",desc:"The company is adopting Microsoft 365. Organize AD, sync to Entra ID and secure sign-ins.",
+  obj:[["AD domain exists",()=>!!S.ad.domain,"Identity → Create domain"],
+   ["Two writable Domain Controllers on different hosts",()=>{const d=S.vms.filter(v=>v.role==="Domain Controller"&&v.power==="on");return d.length>=2&&new Set(d.map(v=>v.hostId)).size>=2},"Build a second DC VM on another host"],
+   ["At least 2 security groups",()=>S.ad.groups.length>=2,"Identity → New group"],
+   ["Password & lockout GPO linked",()=>S.ad.gpos.some(g=>g.setting==="Password & lockout policy"),"Identity → New GPO"],
+   ["Entra Connect sync enabled",()=>S.ad.entra,"Identity → Entra sync"],
+   ["MFA enforced",()=>S.sec.mfa,"Security → MFA"]]},
+ {id:"s4",title:"Open a branch office",lvl:"Intermediate",desc:"A new 15-person branch opens in Dallas. Connect it securely to HQ with local authentication and addressing.",
+  obj:[["A VLAN assigned to a non-HQ site",()=>S.vlans.some(v=>v.site&&v.site!=="HQ"),"Network → Add VLAN, site = Branch"],
+   ["Site-to-site VPN up",()=>S.vpn.length>=1,"Network → Add VPN"],
+   ["DHCP scope on the branch VLAN",()=>S.dhcp.some(d=>{const v=byId(S.vlans,d.vlanId);return v&&v.site!=="HQ"}),"Network → DHCP scope for the branch VLAN"],
+   ["Firewall rule allowing the branch to reach Servers",()=>S.fw.some(r=>r.action==="Allow"&&S.vlans.some(v=>v.site!=="HQ"&&v.name===r.src)&&r.dst!=="any"),"Network → Add rule from branch VLAN to Servers"],
+   ["A Read-Only DC for the branch",()=>runningRole("Read-Only DC (RODC)"),"Virtualization → New VM, role RODC"],
+   ["Branch OU with a linked GPO",()=>S.ad.gpos.some(g=>g.ou!=="Users"&&g.ou!=="Servers"&&g.ou!=="Workstations"),"Identity → New OU + GPO"]]},
+ {id:"s5",title:"Backup & disaster recovery readiness",lvl:"Advanced",desc:"Your cyber-insurance renewal requires a documented, tested 3-2-1-1 backup strategy.",
+  obj:[["Running Backup Server VM",()=>runningRole("Backup Server"),"Virtualization → New VM, role Backup Server"],
+   ["All critical-role VMs are in a backup job",critCovered,"Security → New backup job"],
+   ["An immutable backup copy",()=>S.backups.some(b=>b.target==="immutable"),"Backup target: hardened immutable"],
+   ["An offsite backup copy",()=>S.backups.some(b=>b.target==="offsite"),"Backup target: offsite/cloud"],
+   ["Backup repository VM not on the same host as every critical VM",()=>{const b=S.vms.find(v=>v.role==="Backup Server");const c=S.vms.filter(v=>CRIT_ROLES.includes(v.role));return b&&c.length&&c.some(v=>v.hostId!==b.hostId)},"Spread workloads across hosts"],
+   ["A successful restore test",()=>!!S.flags.restoreTested,"Run a job, then Test restore"]]},
+ {id:"s6",title:"Security hardening audit",lvl:"Advanced",desc:"An external auditor is coming. Reach a security posture score of 85% or more and patch every host.",
+  obj:[["Security baseline GPO linked",()=>S.ad.gpos.some(g=>g.setting==="Security baseline"),"Identity → New GPO"],
+   ["Windows LAPS GPO",()=>S.ad.gpos.some(g=>g.setting==="Windows LAPS"),"Identity → New GPO"],
+   ["EDR and central logging enabled",()=>S.sec.edr&&S.sec.siem,"Security page"],
+   ["Privileged access management enabled",()=>S.sec.pam,"Security page"],
+   ["Firewall ends with a default-deny rule",()=>{const l=S.fw[S.fw.length-1];return l&&l.action==="Deny"&&l.src==="any"&&l.dst==="any"},"Network → Add default deny"],
+   ["Every host patched",()=>S.hosts.length>0&&S.hosts.every(h=>h.patched),"Enable patching, maintenance mode, patch"],
+   ["Posture score ≥ 85%",()=>posture().score>=85,"Dashboard shows the gaps"]]}
+];
+function scnState(){if(!S.scenario)return null;const s=SCN.find(x=>x.id===S.scenario.id);const res=s.obj.map(o=>o[1]());return{s,res,done:res.filter(Boolean).length}}
+
+/* ===================== RENDER ===================== */
+const TABS=[["dash","Dashboard"],["dc","Datacenter"],["virt","Virtualization"],["net","Network"],["id","Identity"],["sec","Security & Backup"],["scn","Scenarios"]];
+function render(){
+ document.body.classList.toggle("ms",S.platform==="microsoft");
+ document.querySelectorAll("#platSeg button").forEach(b=>b.classList.toggle("on",b.dataset.v===S.platform));
+ document.getElementById("nav").innerHTML=TABS.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${S.tab===k?"on":""}">${l}${k==="scn"&&S.scenario?' <span class="pill acc">live</span>':""}</button>`).join("");
+ const V={dash:vDash,dc:vDC,virt:vVirt,net:vNet,id:vId,sec:vSec,scn:vScn}[S.tab]||vDash;
+ document.getElementById("main").innerHTML=`<div class="banner">Training simulation — no real systems are touched. Console: <b>${T("console")}</b> · Management: <b>${T("mgr")}</b> ${tip("mgr")}</div>`+scnBar()+V();
+ document.getElementById("logbd").innerHTML=S.log.map(l=>`<div class="lg-${l.lvl}">[${l.t}] ${esc(l.msg)}</div>`).join("")||'<div class="lg-info">No events yet.</div>';
+ document.getElementById("logcount").textContent=S.log.length+" events ▾";
+}
+function scnBar(){const st=scnState();if(!st)return"";
+ if(st.done===st.res.length&&!S.scenario.done){S.scenario.done=true;S.scenario.end=Date.now();log(`SCENARIO COMPLETE: ${st.s.title}`,"ok")}
+ return`<div class="scbar row"><b>Scenario:</b> ${esc(st.s.title)} <span class="pill ${st.done===st.res.length?"ok":"acc"}">${st.done}/${st.res.length} objectives</span><div class="spacer"></div><button class="sm" data-act="tab" data-v="scn">View checklist</button></div>`}
+function stat(n,l,k){return`<div class="card stat"><div class="n">${n}</div><div class="l">${l} ${k?tip(k):""}</div></div>`}
+function bar(p){const c=p>90?"crit":p>75?"hot":"";return`<div class="bar"><i class="${c}" style="width:${Math.min(100,p)}%"></i></div>`}
+function statusPill(s){return`<span class="pill ${s==="online"||s==="on"?"ok":s==="maintenance"?"warn":s==="off"?"":"bad"}">${s}</span>`}
+
+function vDash(){const p=posture();const on=S.vms.filter(v=>v.power==="on").length;
+ const unclustered=S.hosts.filter(h=>!h.clusterId);
+ return`<h2>Dashboard</h2><p class="sub">Your company's IT estate at a glance.</p>
+ <div class="grid g4" style="margin-bottom:12px">${stat(S.hosts.length,"Physical hosts","host")}${stat(`${on}/${S.vms.length}`,"VMs running","vm")}${stat(S.vlans.length,"VLANs","vlan")}${stat(S.ad.users.length,"AD users","user")}${stat(p.score+"%","Security posture","posture")}</div>
+ <div class="grid g2">
+ <div class="card"><h3>Topology ${tip("cluster")}</h3>${S.hosts.length?`<div class="topo">${S.clusters.map(c=>`<div class="clu"><div class="t">${esc(c.name)} ${c.ha?'<span class="pill ok">HA</span>':""}${c.drs?'<span class="pill acc">LB</span>':""}</div>${S.hosts.filter(h=>h.clusterId===c.id).map(hostBox).join("")||'<div class="empty">No members</div>'}</div>`).join("")}${unclustered.length?`<div class="clu" style="border-color:var(--line)"><div class="t" style="color:var(--mute)">Standalone hosts</div>${unclustered.map(hostBox).join("")}</div>`:""}</div>`:'<div class="empty">No hosts yet. Go to Datacenter or click "Load sample environment".</div>'}</div>
+ <div class="card"><h3>Security posture ${tip("posture")}</h3><div class="score">${p.score}%</div>${bar(p.score)}<table style="margin-top:10px">${p.checks.map(c=>`<tr><td>${c[0]}</td><td>${c[1]?'<span class="pill ok">in place</span>':'<span class="pill bad">gap</span>'}</td></tr>`).join("")}</table></div>
+ </div>`}
+function hostBox(h){const u=hostUse(h);return`<div class="hostbox ${h.status}"><div class="row" style="justify-content:space-between"><b style="font-size:12px">${esc(h.name)}</b>${statusPill(h.status)}</div>
+ <div style="font-size:11px;color:var(--mute)">${TERMS[h.hyp].hv} · RAM ${u.ram}/${h.ram} GB</div>${bar(u.ram/h.ram*100)}
+ <div style="margin-top:5px">${S.vms.filter(v=>v.hostId===h.id).map(v=>`<span class="vmchip ${v.power}">${esc(v.name)}</span>`).join("")||'<span style="font-size:11px;color:var(--mute)">no VMs</span>'}</div></div>`}
+
+function vDC(){return`<h2>Datacenter ${tip("host")}</h2><p class="sub">Physical layer: rack servers, clusters and storage, managed through ${T("mgr")}.</p>
+ <div class="card" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><h3>Hosts ${tip("hypervisor")}</h3><button class="pri" data-act="addHost">+ Add host</button></div>
+ ${S.hosts.length?`<div class="tw"><table><tr><th>Host</th><th>Hypervisor</th><th>Cluster</th><th>CPU (vCPU alloc) ${tip("overcommit")}</th><th>RAM</th><th>Status</th><th>Patched</th><th>Actions</th></tr>
+ ${S.hosts.map(h=>{const u=hostUse(h),c=byId(S.clusters,h.clusterId);return`<tr><td><b>${esc(h.name)}</b><div style="font-size:11px;color:var(--mute)">${esc(h.vendor)}</div></td><td>${HVNAME[h.hyp]}</td><td>${c?esc(c.name):"—"}</td>
+ <td>${u.vcpu}/${h.cpu*4}${bar(u.vcpu/(h.cpu*4)*100)}</td><td>${u.ram}/${h.ram} GB${bar(u.ram/h.ram*100)}</td><td>${statusPill(h.status)}</td><td>${h.patched?'<span class="pill ok">yes</span>':'<span class="pill warn">no</span>'}</td>
+ <td><div class="row"><button class="sm" data-act="hostMaint" data-v="${h.id}" data-tip="maint">${h.status==="maintenance"?"Exit maint.":T("maint")}</button><button class="sm" data-act="patchHost" data-v="${h.id}" data-tip="patch">Patch</button>
+ <button class="sm dan" data-act="failHost" data-v="${h.id}" data-tip="failure">${h.status==="failed"?"Repair":"Simulate failure"}</button><button class="sm" data-act="delHost" data-v="${h.id}">✕</button></div></td></tr>`}).join("")}</table></div>`:'<div class="empty">No hosts. Add your first server.</div>'}</div>
+ <div class="grid g2">
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Clusters ${tip("cluster")}</h3><button data-act="addCluster">+ Create cluster</button></div>
+ ${S.clusters.map(c=>`<div class="ctl"><div><div class="nm">${esc(c.name)} <span class="pill">${c.hyp==="vmware"?"vSphere":"Failover Cluster"}</span></div><div class="ds">${S.hosts.filter(h=>h.clusterId===c.id).map(h=>esc(h.name)).join(", ")||"no hosts"}</div></div>
+ <div class="row"><span style="font-size:12px">HA ${tip("ha")}</span><label class="sw"><input type="checkbox" ${c.ha?"checked":""} data-act="toggleCl" data-v="${c.id}" data-k="ha"><span></span></label>
+ <span style="font-size:12px">LB ${tip("drs")}</span><label class="sw"><input type="checkbox" ${c.drs?"checked":""} data-act="toggleCl" data-v="${c.id}" data-k="drs"><span></span></label>
+ <button class="sm" data-act="clusterHosts" data-v="${c.id}">Members</button><button class="sm" data-act="delCluster" data-v="${c.id}">✕</button></div></div>`).join("")||'<div class="empty">No clusters.</div>'}</div>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Storage ${tip("datastore")}</h3><button data-act="addStorage">+ Add storage</button></div>
+ <div class="row" style="margin-bottom:6px;font-size:12px;color:var(--mute)">Types: SAN ${tip("san")} NAS ${tip("nas")} vSAN ${tip("vsan")} S2D ${tip("s2d")} Local ${tip("local")}</div>
+ ${S.storage.length?`<table><tr><th>Name</th><th>Type</th><th>Capacity</th><th>Hosts</th><th></th></tr>${S.storage.map(s=>{const used=S.vms.filter(v=>v.storageId===s.id).reduce((a,v)=>a+v.disk,0)/1000;
+ return`<tr><td>${esc(s.name)}</td><td><span data-tip="${s.type}">${STYPES[s.type]}</span></td><td>${used.toFixed(1)}/${s.cap} TB${bar(used/s.cap*100)}</td><td>${s.hostIds.length}</td><td><button class="sm" data-act="delStorage" data-v="${s.id}">✕</button></td></tr>`}).join("")}</table>`:'<div class="empty">No storage.</div>'}</div></div>`}
+
+function vVirt(){return`<h2>Virtualization — ${T("console")} ${tip("vm")}</h2><p class="sub">Provision and operate virtual machines. ${T("snap")}s ${tip("snap")} · ${T("mig")} ${tip("mig")}</p>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Virtual machines</h3><button class="pri" data-act="newVM">+ New VM</button></div>
+ ${S.vms.length?`<div class="tw"><table><tr><th>VM</th><th>Role ${tip("role")}</th><th>Size</th><th>Host</th><th>${T("store")}</th><th>Network</th><th>State</th><th>${T("snap")}s</th><th>Actions</th></tr>
+ ${S.vms.map(v=>{const h=byId(S.hosts,v.hostId),st=byId(S.storage,v.storageId),n=byId(S.vlans,v.vlanId);return`<tr><td><b>${esc(v.name)}</b><div style="font-size:11px;color:var(--mute)">${esc(v.os)}</div></td><td>${esc(v.role)}</td><td>${v.vcpu} vCPU · ${v.ram} GB · ${v.disk} GB</td>
+ <td>${h?esc(h.name):"?"}</td><td>${st?esc(st.name):"?"}</td><td>${n?"VLAN "+n.vlan:"—"}</td><td>${statusPill(v.power)} ${backedUp(v)?'<span class="pill acc">backed up</span>':""}</td><td>${v.snaps.length}</td>
+ <td><div class="row"><button class="sm" data-act="power" data-v="${v.id}">${v.power==="on"?"Shut down":"Power on"}</button><button class="sm" data-act="migrate" data-v="${v.id}" data-tip="mig">Migrate</button>
+ <button class="sm" data-act="snap" data-v="${v.id}" data-tip="snap">${T("snap")}</button>${v.snaps.length?`<button class="sm" data-act="revert" data-v="${v.id}">Revert</button><button class="sm" data-act="delSnaps" data-v="${v.id}">Consolidate</button>`:""}<button class="sm" data-act="delVM" data-v="${v.id}">✕</button></div></td></tr>`}).join("")}</table></div>`:'<div class="empty">No VMs. You need at least one host and one storage location first.</div>'}</div>`}
+
+function vNet(){return`<h2>Network ${tip("vlan")}</h2><p class="sub">Segmentation, switching, firewalling and core network services.</p><div class="grid g2">
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>VLANs & subnets ${tip("subnet")}</h3><button data-act="addVlan">+ Add VLAN</button></div>
+ ${S.vlans.length?`<table><tr><th>ID</th><th>Name</th><th>Subnet</th><th>Site</th><th>VMs</th><th></th></tr>${S.vlans.map(v=>`<tr><td>${v.vlan}</td><td>${esc(v.name)}</td><td>${esc(v.subnet)}</td><td>${esc(v.site)}</td><td>${S.vms.filter(x=>x.vlanId===v.id).length}</td><td><button class="sm" data-act="delVlan" data-v="${v.id}">✕</button></td></tr>`).join("")}</table>`:'<div class="empty">No VLANs.</div>'}</div>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Virtual switches ${tip("vswitch")}</h3><button data-act="addSwitch">+ Add ${T("vsw")}</button></div>
+ ${S.switches.map(s=>`<div class="ctl"><div><div class="nm">${esc(s.name)}</div><div class="ds">${esc(s.type)} · ${s.uplinks} uplink(s) · ${s.vlanIds.length} VLAN(s)</div></div><button class="sm" data-act="delSwitch" data-v="${s.id}">✕</button></div>`).join("")||'<div class="empty">No virtual switches.</div>'}</div>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Firewall rules ${tip("firewall")}</h3><div class="row"><button data-act="addFw">+ Rule</button><button data-act="addDefaultDeny" data-tip="defaultdeny">+ Default deny</button></div></div>
+ <p class="ds" style="font-size:12px;color:var(--mute);margin:0 0 6px">Evaluated top to bottom; first match wins.</p>
+ ${S.fw.length?`<div class="tw"><table><tr><th>#</th><th>Name</th><th>Src → Dst</th><th>Port</th><th>Action</th><th></th></tr>${S.fw.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.src)} → ${esc(r.dst)}</td><td>${esc(r.port)}</td><td><span class="pill ${r.action==="Allow"?"ok":"bad"}">${r.action}</span></td><td><div class="row"><button class="sm" data-act="fwUp" data-v="${r.id}">↑</button><button class="sm" data-act="fwDown" data-v="${r.id}">↓</button><button class="sm" data-act="delFw" data-v="${r.id}">✕</button></div></td></tr>`).join("")}</table></div>`:'<div class="empty">No rules.</div>'}</div>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>DHCP scopes ${tip("dhcp")}</h3><button data-act="addDhcp">+ Scope</button></div>
+ ${S.dhcp.map(d=>{const v=byId(S.vlans,d.vlanId);return`<div class="ctl"><div><div class="nm">${v?esc(v.name)+" ("+esc(v.subnet)+")":"?"}</div><div class="ds">Range .${esc(d.range)} · ${d.lease}-day lease</div></div><button class="sm" data-act="delDhcp" data-v="${d.id}">✕</button></div>`}).join("")||'<div class="empty">No scopes.</div>'}</div>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>DNS ${tip("dns")} ${S.ad.domain?`<span class="pill">${esc(S.ad.domain)}</span>`:""}</h3><button data-act="addDns">+ Record</button></div>
+ ${S.dns.length?`<table><tr><th>Name</th><th>Type</th><th>Value</th><th></th></tr>${S.dns.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.type}</td><td>${esc(r.value)}</td><td><button class="sm" data-act="delDns" data-v="${r.id}">✕</button></td></tr>`).join("")}</table>`:'<div class="empty">No DNS zone yet — it is created with your AD domain.</div>'}</div>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Site-to-site VPN ${tip("vpn")}</h3><button data-act="addVpn">+ Tunnel</button></div>
+ ${S.vpn.map(t=>`<div class="ctl"><div><div class="nm">${esc(t.name)} <span class="pill ok">up</span></div><div class="ds">→ ${esc(t.peer)} · ${esc(t.type)} · ${esc(t.auth)}</div></div><button class="sm" data-act="delVpn" data-v="${t.id}">✕</button></div>`).join("")||'<div class="empty">No tunnels.</div>'}</div>
+ </div>`}
+
+function vId(){const ad=S.ad;if(!ad.domain)return`<h2>Identity ${tip("ad")}</h2><p class="sub">Active Directory and Microsoft Entra ID.</p><div class="card"><h3>No domain yet ${tip("dc")}</h3>
+ <p>To build Active Directory you need a running VM with the <b>Domain Controller</b> role. ${dcOn()?'<span class="pill ok">DC VM ready</span>':'<span class="pill warn">no running DC VM</span>'}</p><button class="pri" data-act="createDomain">Create new forest / domain</button></div>`;
+ return`<h2>Identity — ${esc(ad.domain)} ${tip("ad")}</h2><p class="sub">Domain controllers: ${S.vms.filter(v=>v.role.includes("Domain Controller")||v.role.includes("RODC")).map(v=>esc(v.name)+(v.power==="on"?"":" (off)")).join(", ")||"none!"}</p>
+ <div class="grid g2">
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Users ${tip("user")}</h3><div class="row"><button data-act="addUser">+ User</button><button data-act="bulkUsers">Import 5 users</button></div></div>
+ ${ad.users.length?`<div class="tw"><table><tr><th>User</th><th>OU</th><th>Groups</th><th></th></tr>${ad.users.map(u=>`<tr><td>${esc(u.n)} ${u.admin?'<span class="pill warn">admin</span>':""}</td><td>${esc(u.ou)}</td><td>${u.groups.map(esc).join(", ")||"—"}</td><td><button class="sm" data-act="delUser" data-v="${esc(u.n)}">✕</button></td></tr>`).join("")}</table></div>`:'<div class="empty">No users.</div>'}</div>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>OUs & groups ${tip("ou")}</h3><div class="row"><button data-act="addOU">+ OU</button><button data-act="addGroup" data-tip="group">+ Group</button></div></div>
+ <div style="margin-bottom:8px"><b style="font-size:12px;color:var(--mute)">OUs</b><br>${ad.ous.map(o=>`<span class="pill" style="margin:2px">OU=${esc(o)}</span>`).join("")}</div>
+ <div><b style="font-size:12px;color:var(--mute)">Groups</b><br>${ad.groups.map(g=>`<span class="pill acc" style="margin:2px">${esc(g)}</span>`).join("")||'<span class="empty">none</span>'}</div></div>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Group Policy ${tip("gpo")}</h3><button data-act="addGPO">+ GPO</button></div>
+ ${ad.gpos.map(g=>`<div class="ctl"><div><div class="nm">${esc(g.n)}</div><div class="ds">${esc(g.setting)} → OU=${esc(g.ou)}</div></div><button class="sm" data-act="delGPO" data-v="${g.id}">✕</button></div>`).join("")||'<div class="empty">No GPOs.</div>'}
+ <div class="ds" style="font-size:12px;color:var(--mute);margin-top:6px">Settings: baseline ${tip("baseline")} LAPS ${tip("laps")}</div></div>
+ <div class="card"><h3>Hybrid identity ${tip("entra")}</h3><div class="ctl"><div><div class="nm">Microsoft Entra Connect sync</div><div class="ds">Sync users & groups to Entra ID for Microsoft 365</div></div><label class="sw"><input type="checkbox" ${ad.entra?"checked":""} data-act="entra"><span></span></label></div>
+ <div class="ctl"><div><div class="nm">MFA ${tip("mfa")}</div><div class="ds">Managed on the Security page</div></div>${S.sec.mfa?'<span class="pill ok">enforced</span>':'<span class="pill bad">off</span>'}</div></div>
+ </div>`}
+
+function vSec(){const ctl=(k,n,d)=>`<div class="ctl"><div><div class="nm">${n} ${tip(k)}</div><div class="ds">${d}</div></div><label class="sw"><input type="checkbox" ${S.sec[k]?"checked":""} data-act="sec" data-v="${k}"><span></span></label></div>`;
+ return`<h2>Security & Backup ${tip("posture")}</h2><p class="sub">Defensive controls and data protection. Posture score: <b>${posture().score}%</b></p><div class="grid g2">
+ <div class="card"><h3>Security controls</h3>
+ ${ctl("mfa","Multi-factor authentication","Conditional Access policy for all users")}
+ ${ctl("edr","Endpoint Detection & Response","Agent on every VM and workstation")}
+ ${ctl("patch","Patch management",S.platform==="vmware"?"vSphere Lifecycle Manager + Azure Update Manager":"Azure Update Manager / Intune / Cluster-Aware Updating")}
+ ${ctl("siem","Central logging (SIEM)","Forward event, firewall and hypervisor logs")}
+ ${ctl("pam","Privileged access management","Just-in-time admin elevation")}
+ <div class="ds" style="font-size:12px;color:var(--mute);margin-top:8px">Baselines and LAPS are applied via Group Policy (Identity page). Default deny is on the Network page.</div></div>
+ <div class="card"><div class="row" style="justify-content:space-between"><h3>Backup jobs ${tip("backup")}</h3><button class="pri" data-act="addBackup">+ Job</button></div>
+ <div class="row" style="font-size:12px;color:var(--mute);margin-bottom:6px">Immutable ${tip("immutable")} Offsite ${tip("offsite")} Restore test ${tip("restore")} RPO/RTO ${tip("rpo")}</div>
+ ${S.backups.map(b=>`<div class="ctl"><div><div class="nm">${esc(b.n)} <span class="pill ${b.target==="immutable"?"ok":b.target==="offsite"?"acc":""}">${b.target}</span></div><div class="ds">${b.vmIds.map(id=>esc((byId(S.vms,id)||{}).name)).join(", ")} · ${esc(b.freq)} · last run: ${esc(b.last)}</div></div>
+ <div class="row"><button class="sm" data-act="runBackup" data-v="${b.id}">Run now</button><button class="sm" data-act="testRestore" data-v="${b.id}">Test restore</button><button class="sm" data-act="delBackup" data-v="${b.id}">✕</button></div></div>`).join("")||'<div class="empty">No jobs. Requires a running Backup Server VM.</div>'}
+ <div style="margin-top:8px">Critical VMs protected: ${critCovered()?'<span class="pill ok">all</span>':'<span class="pill bad">gaps</span>'} ${S.flags.restoreTested?'<span class="pill ok">restore verified</span>':""}</div></div>
+ </div>`}
+
+function vScn(){const st=scnState();
+ let cur="";if(st){const el=Math.round(((S.scenario.end||Date.now())-S.scenario.start)/60000);
+  cur=`<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>${esc(st.s.title)} <span class="pill">${st.s.lvl}</span></h3><button class="sm dan" data-act="stopScn">Abandon</button></div>
+  <p>${esc(st.s.desc)}</p>${bar(st.done/st.res.length*100)}<p style="font-size:12px;color:var(--mute)">${st.done}/${st.res.length} complete · ${el} min elapsed</p>
+  ${st.s.obj.map((o,i)=>`<div class="obj ${st.res[i]?"done":""}"><div class="ck">${st.res[i]?"✓":""}</div><div><div>${esc(o[0])}</div><div class="hint">Hint: ${esc(o[2])}</div></div></div>`).join("")}
+  ${st.done===st.res.length?`<p style="margin-top:12px"><span class="pill ok">Scenario complete in ${el} min</span> Pick another challenge below, or keep building on this environment.</p>`:""}</div>`}
+ return`<h2>Build scenarios ${tip("scenario")}</h2><p class="sub">Real-world IT projects with live-checked objectives. Starting a scenario keeps your current lab — use Reset or the sample environment for a clean start.</p>${cur}
+ <div class="grid g2">${SCN.map(s=>`<div class="card"><h3>${esc(s.title)} <span class="pill ${s.lvl==="Beginner"?"ok":s.lvl==="Advanced"?"bad":"warn"}">${s.lvl}</span></h3><p style="margin:0 0 8px">${esc(s.desc)}</p>
+ <div style="font-size:12px;color:var(--mute);margin-bottom:10px">${s.obj.length} objectives</div><button class="${S.scenario&&S.scenario.id===s.id?"":"pri"}" data-act="startScn" data-v="${s.id}">${S.scenario&&S.scenario.id===s.id?"Restart":"Start"}</button></div>`).join("")}</div>`}
+
+/* ===================== MODALS ===================== */
+function closeModal(){document.getElementById("modalRoot").innerHTML=""}
+function form(title,fields,onSubmit){
+ const html=fields.map(f=>{const lab=`<label>${esc(f.label)} ${f.tip?tip(f.tip):""}</label>`;
+  if(f.type==="select")return`<div class="field">${lab}<select name="${f.k}">${f.options.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o];return`<option value="${esc(v)}" ${f.value==v?"selected":""}>${esc(l)}</option>`}).join("")}</select></div>`;
+  if(f.type==="checks")return`<div class="field">${lab}<div class="checks">${f.options.length?f.options.map(([v,l])=>`<label><input type="checkbox" name="${f.k}" value="${esc(v)}" ${(f.value||[]).includes(v)?"checked":""}>${esc(l)}</label>`).join(""):'<span class="empty">none available</span>'}</div></div>`;
+  if(f.type==="checkbox")return`<div class="field"><label style="color:var(--text)"><input type="checkbox" name="${f.k}" style="width:auto" ${f.value?"checked":""}> ${esc(f.label)} ${f.tip?tip(f.tip):""}</label></div>`;
+  return`<div class="field">${lab}<input name="${f.k}" type="${f.type||"text"}" value="${esc(f.value??"")}"></div>`}).join("");
+ const root=document.getElementById("modalRoot");
+ root.innerHTML=`<div class="modal-bg"><form class="modal"><h3>${esc(title)}</h3>${html}<div id="ferr" style="color:#ffa198;min-height:18px;font-size:13px"></div><div class="row" style="justify-content:flex-end"><button type="button" data-close>Cancel</button><button class="pri" type="submit">OK</button></div></form></div>`;
+ const fm=root.querySelector("form");
+ fm.querySelector("[data-close]").onclick=closeModal;
+ fm.onsubmit=e=>{e.preventDefault();const out={};
+  fields.forEach(f=>{if(f.type==="checks")out[f.k]=[...fm.querySelectorAll(`input[name="${f.k}"]:checked`)].map(i=>i.value);
+   else if(f.type==="checkbox")out[f.k]=fm.querySelector(`input[name="${f.k}"]`).checked;
+   else out[f.k]=fm.querySelector(`[name="${f.k}"]`).value.trim()});
+  const err=onSubmit(out);if(err){fm.querySelector("#ferr").textContent=err;return}closeModal();commit()};
+ const first=fm.querySelector("input,select");if(first&&window.innerWidth>760)first.focus()}
+function confirmBox(msg,yes){const root=document.getElementById("modalRoot");root.innerHTML=`<div class="modal-bg"><div class="modal"><p>${esc(msg)}</p><div class="row" style="justify-content:flex-end"><button data-n>Cancel</button><button class="pri" data-y>Confirm</button></div></div></div>`;
+ root.querySelector("[data-n]").onclick=closeModal;root.querySelector("[data-y]").onclick=()=>{closeModal();yes()}}
+function toast(msg){log(msg,"warn");const root=document.getElementById("modalRoot");root.innerHTML=`<div class="modal-bg"><div class="modal"><h3 style="color:var(--warn)">Can't do that yet</h3><p>${esc(msg)}</p><div class="row" style="justify-content:flex-end"><button class="pri" data-n>OK</button></div></div></div>`;
+ root.querySelector("[data-n]").onclick=()=>{closeModal();render()};return"__toast"}
+
+/* ===================== EVENTS ===================== */
+function commit(){save();render()}
+document.addEventListener("click",e=>{
+ const ti=e.target.closest(".tip-ic");if(ti){e.preventDefault();e.stopPropagation();showTip(ti,true);return}
+ const el=e.target.closest("[data-act]");if(!el)return;
+ if(el.closest("label.sw")&&e.target.tagName!=="INPUT")return;
+ const fn=A[el.dataset.act];if(!fn)return;
+ const r=el.dataset.k?fn(el.dataset.v,el.dataset.k):fn(el.dataset.v);
+ if(r!=="__toast")commit();else save()});
+/* tooltip */
+const tipEl=document.getElementById("tip");let pinned=false;
+function showTip(el,pin){const g=G[el.dataset.tip];if(!g)return;pinned=!!pin;
+ tipEl.innerHTML=`<h4>${esc(g.t)}</h4><p>${esc(g.d)}</p><div class="k">How to</div><p>${esc(g.h)}</p>${g.a?`<div class="k">Alternatives</div><p>${esc(g.a)}</p>`:""}${pin?'<p style="font-size:11px;color:var(--mute);margin-top:8px">Tap anywhere to close</p>':""}`;
+ tipEl.style.display="block";const r=el.getBoundingClientRect(),tw=tipEl.offsetWidth,th=tipEl.offsetHeight;
+ let x=Math.min(Math.max(8,r.left+r.width/2-tw/2),innerWidth-tw-8),y=r.bottom+8;if(y+th>innerHeight-8)y=Math.max(8,r.top-th-8);
+ tipEl.style.left=x+"px";tipEl.style.top=y+"px"}
+document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el&&!pinned)showTip(el,false)});
+document.addEventListener("mouseout",e=>{const el=e.target.closest("[data-tip]");if(el&&!pinned&&!el.contains(e.relatedTarget))tipEl.style.display="none"});
+document.addEventListener("pointerdown",e=>{if(pinned&&!e.target.closest(".tip-ic")&&!e.target.closest("#tip")){pinned=false;tipEl.style.display="none"}},true);
+if(!S.log.length)log("Welcome. Load the sample environment or start from Datacenter → Add host. Hover (or tap) any ? for help.");
+if(innerWidth<760)document.getElementById("log").classList.add("min");
+render();
+</script>
+</body>
+</html>

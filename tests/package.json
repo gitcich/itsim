@@ -1,0 +1,1 @@
+{"name":"it-lab-sims-tests","private":true,"scripts":{"test":"node itlab-smoke.test.js && node itlab-ha-scenario.test.js && node rmmlab-scenarios.test.js"},"devDependencies":{"jsdom":"^24.0.0"}}

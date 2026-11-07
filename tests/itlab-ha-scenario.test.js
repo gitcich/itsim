@@ -1,0 +1,12 @@
+const {JSDOM}=require('jsdom');const fs=require('fs');
+const dom=new JSDOM(fs.readFileSync('../itlab/index.html','utf8'),{runScripts:'dangerously',pretendToBeVisual:true});
+const w=dom.window,d=w.document;const errs=[];w.addEventListener('error',e=>errs.push(e.message));
+const click=s=>d.querySelector(s).dispatchEvent(new w.MouseEvent('click',{bubbles:true}));
+const submit=(v={})=>{const f=d.querySelector('#modalRoot form');for(const[k,x]of Object.entries(v))f.querySelector(`[name="${k}"]`).value=x;f.dispatchEvent(new w.Event('submit',{cancelable:true}));const e=d.querySelector('#ferr');if(e&&e.textContent)console.log('ERR',e.textContent)};
+const S=()=>w.eval('S');
+click('[data-act=sample]');click('#modalRoot [data-y]');click('[data-act=tab][data-v=scn]');click('[data-act=startScn][data-v=s2]');
+click('[data-act=tab][data-v=dc]');click('[data-act=addCluster]');d.querySelectorAll('#modalRoot input[name=hosts]').forEach(i=>i.checked=true);submit();
+click('[data-act=tab][data-v=virt]');click('[data-act=newVM]');submit({name:'APP01'});
+click(`[data-act=migrate][data-v=${S().vms[2].id}]`);submit();
+click('[data-act=tab][data-v=dc]');click(`[data-act=failHost][data-v=${S().hosts[0].id}]`);
+console.log(w.eval('scnState().res'),d.querySelector('.scbar').textContent.trim().slice(0,80));console.log(errs);
