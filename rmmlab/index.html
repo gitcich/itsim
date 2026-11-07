@@ -71,6 +71,24 @@ tr.sel td{background:#14302b}tr.click{cursor:pointer}tr.click:hover td{backgroun
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:5px}.dot.off{background:#56606b}.dot.alert{background:var(--bad)}
 @media (max-width:760px){.layout{grid-template-columns:1fr}nav{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:6px}
  nav button{width:auto;white-space:nowrap;margin:0 2px}nav button.on{box-shadow:inset 0 -3px 0 var(--acc)}main{padding:12px;padding-bottom:90px}#log{width:auto;left:12px}}
+#aiBtn{position:fixed;left:212px;bottom:12px;z-index:31;background:linear-gradient(135deg,var(--acc),#155a8a);border:0;color:#fff;border-radius:22px;padding:9px 15px;font-weight:600;box-shadow:0 6px 18px #0008}
+#aiPanel{position:fixed;left:212px;bottom:60px;width:400px;max-width:calc(100vw - 24px);height:min(560px,calc(100vh - 130px));z-index:40;background:var(--panel);border:1px solid var(--acc2);border-radius:12px;box-shadow:0 12px 30px #000a;display:none;flex-direction:column}
+#aiPanel.open{display:flex}
+#aiPanel .ah{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+#aiPanel .ah b{flex:1}
+#aiMsgs{flex:1;overflow:auto;padding:10px 12px;font-size:13px}
+.am{margin-bottom:10px;padding:8px 10px;border-radius:10px;max-width:92%;word-wrap:break-word}
+.am.u{background:#123a34;margin-left:auto}
+.am.a{background:var(--panel2)}
+.am.a ul{margin:4px 0;padding-left:18px}
+.am code{background:#0c1014;padding:0 4px;border-radius:4px;font-size:12px}
+.am.err{background:#3a1717;color:#ffb3ae}
+.am .tool{font-size:11px;color:var(--mute);margin-top:4px}
+#aiSugg{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px}
+#aiSugg button{font-size:12px;padding:4px 9px;border-radius:14px}
+#aiForm{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--line)}
+#aiForm textarea{resize:none;height:40px}
+@media (max-width:760px){#aiBtn{left:auto;right:12px;bottom:58px}#aiPanel{left:8px;right:8px;width:auto;bottom:8px;height:78vh;max-width:none}}
 </style>
 </head>
 <body>
@@ -86,6 +104,14 @@ tr.sel td{background:#14302b}tr.click{cursor:pointer}tr.click:hover td{backgroun
 <div class="layout"><nav id="nav"></nav><main id="main"></main></div>
 <div id="log"><div class="hd" data-act="logtoggle"><span>Activities</span><span id="logcount"></span></div><div class="bd" id="logbd"></div></div>
 <div id="tip"></div><div id="modalRoot"></div>
+<button id="aiBtn" type="button" data-tip="assistant">✦ Ask AI</button>
+<div id="aiPanel" role="dialog" aria-label="AI assistant">
+ <div class="ah"><span class="logo" style="width:22px;height:22px">AI</span><b>Lab Assistant</b><span class="tip-ic" data-tip="assistant">?</span><button class="sm" type="button" id="aiClear">New chat</button><button class="sm" type="button" id="aiClose">✕</button></div>
+ <div id="aiMsgs"></div>
+ <div id="aiSugg"></div>
+ <form id="aiForm"><textarea id="aiIn" placeholder="Ask about RMM, your lab, or your scenario…"></textarea><button class="pri" type="submit" id="aiSend">Send</button></form>
+</div>
+
 <script>
 /* ===================== GLOSSARY ===================== */
 const G={
@@ -126,6 +152,7 @@ disk:{t:"Disk usage",d:"Percent of the system drive used. Above ~90%, Windows up
 svc:{t:"Windows services",d:"Background programs (Print Spooler, Windows Update, etc.). A stopped service is a classic help-desk ticket.",h:"Use a service condition to alert, and a restart script or remote session to fix.",a:"Service monitors in every RMM."},
 compliance:{t:"Patch compliance",d:"Share of Windows devices with no outstanding Critical or Important patches. Held, rejected and manually deferred patches don't count against it.",h:"Patching page shows compliance per organization.",a:"Compliance reporting in Intune / Autopatch reports."},
 scn:{t:"Practice scenarios",d:"Guided exercises based on everyday MSP and help-desk work. Each one loads the sample MSP and checks your objectives live.",h:"Start one; the checklist appears at the top of every page.",a:"Vendor academies (NinjaOne Dojo & training, Datto/Kaseya University, N-able training) and free trials."},
+assistant:{t:"AI Lab Assistant",d:"A built-in AI tutor available on every page. It can explain concepts, tell you where to click, look up your lab's devices, policies, alerts and tickets, and coach you through scenarios with hints.",h:"Tap ✦ Ask AI (bottom of the screen), pick a suggestion or type a question. Use 'Get a hint' on a running scenario or 'Ask AI' on a device. It can open pages for you but never changes settings — you do the clicking.",a:"Most major RMM and PSA vendors (NinjaOne, ConnectWise, Kaseya/Datto, N-able) and Microsoft (Security Copilot, Copilot in Intune) now ship AI assistants for technicians."},
 health:{t:"Health overview",d:"Fleet-wide status: devices online, active alerts, open tickets, patch compliance, AV and backup coverage.",h:"Start your day here; drill into whatever is red.",a:"Custom dashboards and scheduled reports."}
 };
 
@@ -439,7 +466,7 @@ function devDetail(d){const e=devEff(d),t=S.dtab||"overview";const tabs=[["overv
  if(t==="alerts")body=devAlerts(d).map(a=>`<div class="ctl"><div class="nm">${sevPill(a.sev)} ${esc(a.msg)}</div><button class="sm" data-act="resetAlert" data-v="${a.id}">Reset</button></div>`).join("")||'<div class="empty">No active alerts.</div>';
  return`<div class="card" style="margin-bottom:12px;border-color:var(--acc2)"><div class="row" style="justify-content:space-between"><h3><span class="dot ${d.online?"":"off"}"></span>${esc(d.name)} <span class="pill">${d.role}</span></h3><button class="sm" data-act="closeDev">Close</button></div>
  <div class="row" style="margin-bottom:10px"><button class="sm pri" data-act="remote" data-v="${d.id}" data-tip="remote">Remote session</button><button class="sm" data-act="devScript" data-v="${d.id}" data-tip="lib">Run automation</button><button class="sm" data-act="devReboot" data-v="${d.id}">Reboot</button>
- ${d.online?"":`<button class="sm" data-act="devWake" data-v="${d.id}">Mark back online</button>`}<button class="sm" data-act="devOverride" data-v="${d.id}" data-tip="inherit">Policy override</button><button class="sm dan" data-act="devRemove" data-v="${d.id}">Remove device</button></div>
+ ${d.online?"":`<button class="sm" data-act="devWake" data-v="${d.id}">Mark back online</button>`}<button class="sm" data-act="devOverride" data-v="${d.id}" data-tip="inherit">Policy override</button><button class="sm dan" data-act="devRemove" data-v="${d.id}">Remove device</button><button class="sm" data-act="askAI" data-v="dev" data-tip="assistant">✦ Ask AI</button></div>
  <div class="tabs">${tabs.map(([k,l])=>`<button data-act="dtab" data-v="${k}" class="${t===k?"on":""}">${l}</button>`).join("")}</div>${body}</div>`}
 const patchPill=s=>`<span class="pill ${s==="installed"?"ok":s==="held"||s==="rejected"?"bad":s==="approved"?"acc":"warn"}">${s==="new"?"not scanned":s}</span>`;
 
@@ -492,7 +519,7 @@ function vBk(){const D=S.devices.filter(d=>devEff(d).backup.enabled||d.role.incl
  ${S.flags.restoreTested?'<p><span class="pill ok">Restore test passed</span></p>':""}</div>`}
 
 function vScn(){const st=scnState();let cur="";if(st){const el=(S.scenario.end??S.clock)-S.scenario.start;
- cur=`<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>${esc(st.s.title)} <span class="pill">${st.s.lvl}</span></h3><button class="sm dan" data-act="stopScn">End</button></div><p>${esc(st.s.desc)}</p>${bar(st.done/st.res.length*100)}
+ cur=`<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>${esc(st.s.title)} <span class="pill">${st.s.lvl}</span></h3><div class="row"><button class="sm" data-act="askAI" data-v="hint" data-tip="assistant">✦ Get a hint</button><button class="sm dan" data-act="stopScn">End</button></div></div><p>${esc(st.s.desc)}</p>${bar(st.done/st.res.length*100)}
  <p style="font-size:12px;color:var(--mute)">${st.done}/${st.res.length} complete · ${el} simulated hour(s)</p>${st.s.obj.map((o,i)=>`<div class="obj ${st.res[i]?"done":""}"><div class="ck">${st.res[i]?"✓":""}</div><div><div>${esc(o[0])}</div><div class="hint">Hint: ${esc(o[2])}</div></div></div>`).join("")}
  ${st.done===st.res.length?`<p style="margin-top:12px"><span class="pill ok">Complete in ${el} simulated hour(s)</span></p>`:""}</div>`}
  return`<h2>Practice scenarios ${tip("scn")}</h2><p class="sub">Each scenario loads a fresh sample MSP and checks your objectives live.</p>${cur}
@@ -564,6 +591,90 @@ function showTip(el,pin){const g=G[el.dataset.tip];if(!g)return;pinned=!!pin;
 document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el&&!pinned)showTip(el,false)});
 document.addEventListener("mouseout",e=>{const el=e.target.closest("[data-tip]");if(el&&!pinned&&!el.contains(e.relatedTarget))tipEl.style.display="none"});
 document.addEventListener("pointerdown",e=>{if(pinned&&!e.target.closest(".tip-ic")&&!e.target.closest("#tip")){pinned=false;tipEl.style.display="none"}},true);
+/* ===================== AI ASSISTANT ===================== */
+const AI={msgs:[],busy:false,sample:null,state:"loading",ctrl:null};
+const AI_SUGG=["What should I do next in my scenario?","Why are my alerts firing?","Explain policy inheritance simply","How would Datto RMM or N-able do this?"];
+const AI_SYS=`You are the Lab Assistant built into "RMM Lab Simulator", an independent training simulation modeled on NinjaOne-style RMM workflows (not affiliated with or endorsed by NinjaOne). The learner is practicing MSP / IT help-desk skills.
+
+Your jobs:
+1. Explain RMM and endpoint-management concepts clearly (policies, conditions, patching, automation, ticketing, backup, remote access, documentation), and mention how real products do it (NinjaOne, ConnectWise, Datto RMM, N-able, Kaseya, Atera, Intune) when useful.
+2. Tell the learner exactly where to click in THIS simulator (UI map below).
+3. Diagnose their lab using the tools: look up devices, policies, alerts and tickets rather than guessing.
+4. Coach scenarios: if a scenario is running, give a hint for the next unfinished objective first; give the full step-by-step only if they ask for it.
+5. You may call open_page to take the learner to a page or device when that helps. You cannot change settings yourself; tell the learner what to click.
+
+Simulator UI map:
+- Header: clock with "+1 hour" and "+1 day" (time only moves when advanced; schedules fire at their set hours), "Load sample MSP", "Reset".
+- Dashboard: health KPIs and latest alerts.
+- Organizations: "+ Add organization" (policy per device role), "+ Location", "Edit mapping", "Deploy agents" (installer per location), Documentation "+ Add" (Credential, Apps & Services, Network, Knowledge base).
+- Devices: click a row → Remote session (Services/Terminal/File transfer/Processes), Run automation, Reboot, Policy override, Remove; tabs Overview/Patches/Software/Alerts.
+- Policies: select a policy → tabs Conditions (+ Add condition: type, threshold, severity, Create ticket, Notify, Run automation), Scheduled automations (Daily 03:00 or Hourly), Patching (OS patching toggle, Hold AI-flagged patches toggle, Edit patch settings: scan/install hour, approval per severity, reboot), Software (install list, third-party patching), Security (antivirus), Backup (Image or File & Folder; Cloud/Local/Hybrid; hour). Child policies inherit; use "Override" to set their own.
+- Automation Library: built-in scripts + "+ Add script".
+- Patching: "Release Patch Tuesday", "Scan now", "Install approved now", per-KB status, manual review queue (Approve/Reject).
+- Alerts: active alerts with Create ticket / Reset. Ticketing: board by status; open a ticket to set status, assignee, priority, add a note. SLA: P1 4h, P2 8h, P3 24h, P4 72h.
+- Backup: per-device "Back up now" and "Test restore".
+- Scenarios: start one; checklist with hints.
+
+Style: the learner is often on a phone. Be brief: a short answer, then at most 5 bullets. Use **bold** for button and page names. No headings, no tables. If the question is unrelated to IT, answer briefly and steer back.`;
+function aiCtx(){const act=S.alerts.filter(a=>a.status==="active");const st=scnState();const d=byId(S.devices,S.sel);
+ return JSON.stringify({clock:clockStr(),page:(TABS.find(t=>t[0]===S.tab)||[])[1],selectedDevice:d?d.name:null,
+  scenario:st?{title:st.s.title,objectives:st.s.obj.map((o,i)=>({objective:o[0],done:st.res[i],hint:o[2]}))}:null,
+  orgs:S.orgs.map(o=>({name:o.name,devices:S.devices.filter(x=>x.orgId===o.id).length,patchCompliance:compliancePct(S.devices.filter(x=>x.orgId===o.id))+"%"})),
+  policies:S.policies.map(p=>p.name),activeAlerts:act.slice(-10).map(a=>({device:(byId(S.devices,a.devId)||{}).name,sev:a.sev,cond:a.msg})),
+  openTickets:S.tickets.filter(t=>t.status!=="Resolved").slice(0,10).map(t=>({num:t.num,pri:t.pri,title:t.title,assignee:t.assignee,breach:breach(t)}))})}
+function devSummary(x){const e=devEff(x);return{name:x.name,org:orgName(x.orgId),location:locName(x.locId),role:x.role,os:x.os,online:x.online,diskPct:x.disk,cpuPct:x.cpu,printSpooler:x.spooler,pendingReboot:x.pendingReboot,
+ antivirus:x.av,backup:x.backup.status,apps:x.apps,outdatedApps:x.outdated,effectivePolicy:e.name,policyOverride:!!x.override,
+ patches:x.patches.map(p=>`${p.kb} ${p.sev} ${p.state}${p.flagged?" AI-flagged":""}`),activeAlerts:devAlerts(x).map(a=>a.sev+": "+a.msg)}}
+function polSummary(p){const e=eff(p.id);return{name:p.name,role:p.role,parent:(byId(S.policies,p.parentId)||{}).name||null,
+ ownConditions:p.conds.map(c=>({cond:condLabel(c),sev:c.sev,ticket:c.ticket,notify:c.notify,runs:(byId(S.scripts,c.script)||{}).name||null})),
+ effectiveConditions:e.conds.map(condLabel),scheduledAutomations:e.autos.map(a=>`${(byId(S.scripts,a.script)||{}).name} (${a.sched})`),
+ patching:e.patch,software:e.sw,antivirus:e.av,backup:e.backup,usedByDevices:S.devices.filter(d=>devPolicyId(d)===p.id).map(d=>d.name),inheritsPatch:p.parentId&&p.patch===null}}
+const findBy=(arr,name)=>{const n=String(name||"").toLowerCase();return arr.find(x=>x.name.toLowerCase()===n)||arr.find(x=>x.name.toLowerCase().includes(n))};
+const AI_TOOLS=[
+ {name:"list_devices",description:"List managed devices with health summary. Optional organization filter.",inputSchema:{type:"object",properties:{organization:{type:"string"}}},
+  execute({organization}={}){const o=organization?findBy(S.orgs,organization):null;return S.devices.filter(x=>!o||x.orgId===o.id).map(x=>({name:x.name,org:orgName(x.orgId),role:x.role,online:x.online,disk:x.disk,alerts:devAlerts(x).length,pendingPatches:x.patches.filter(p=>["new","available","approved","held"].includes(p.state)).length}))}},
+ {name:"get_device",description:"Full details for one device by name (e.g. HCL-WS03).",inputSchema:{type:"object",properties:{name:{type:"string"}},required:["name"]},
+  execute({name}){const x=findBy(S.devices,name);if(!x)throw new Error("No device named "+name);return devSummary(x)}},
+ {name:"get_policy",description:"Configuration of an agent policy by name, including inherited (effective) settings.",inputSchema:{type:"object",properties:{name:{type:"string"}},required:["name"]},
+  execute({name}){const p=findBy(S.policies,name);if(!p)throw new Error("No policy named "+name+". Policies: "+S.policies.map(x=>x.name).join("; "));return polSummary(p)}},
+ {name:"list_tickets",description:"All tickets with status, priority, assignee, SLA state and notes.",inputSchema:{type:"object",properties:{}},
+  execute(){return S.tickets.map(t=>({num:t.num,title:t.title,org:orgName(t.orgId),device:(byId(S.devices,t.devId)||{}).name||null,pri:t.pri,status:t.status,assignee:t.assignee,ageHours:(t.resolvedAt??S.clock)-t.created,slaHours:SLA[t.pri],breach:breach(t),notes:t.notes.length}))}},
+ {name:"recent_activity",description:"The 25 most recent activity log entries (what the simulator just did).",inputSchema:{type:"object",properties:{}},execute(){return S.log.slice(0,25).map(l=>`[${l.t}] ${l.msg}`)}},
+ {name:"glossary",description:"The simulator's built-in definition, how-to and alternatives for a term (e.g. 'patch approval', 'compound condition', 'SLA').",inputSchema:{type:"object",properties:{term:{type:"string"}},required:["term"]},
+  execute({term}){const t=String(term).toLowerCase();const hit=Object.values(G).find(g=>g.t.toLowerCase().includes(t))||G[t];return hit||{note:"No glossary entry; answer from general knowledge."}}},
+ {name:"open_page",description:"Navigate the learner's screen to a page, optionally opening a device. page is one of: dash, orgs, devs, pols, lib, patch, alerts, tix, bk, scn.",inputSchema:{type:"object",properties:{page:{type:"string"},device:{type:"string"},policy:{type:"string"}},required:["page"]},
+  execute({page,device,policy}){if(!TABS.some(t=>t[0]===page))throw new Error("Unknown page");S.tab=page;if(device){const x=findBy(S.devices,device);if(x){S.sel=x.id;S.tab="devs"}}if(policy){const p=findBy(S.policies,policy);if(p){S.polSel=p.id;S.tab="pols"}}commit();return{ok:true,now:page}}}];
+function aiMd(s){const lines=esc(s).split("\n");let out="",inL=false;for(let l of lines){l=l.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/`([^`]+)`/g,"<code>$1</code>");
+ const m=l.match(/^\s*(?:[-*•]|\d+\.)\s+(.*)/);if(m){if(!inL){out+="<ul>";inL=true}out+=`<li>${m[1]}</li>`}else{if(inL){out+="</ul>";inL=false}if(l.trim())out+=`<div>${l.replace(/^#+\s*/,"")}</div>`}}return out+(inL?"</ul>":"")}
+function aiDraw(){const box=document.getElementById("aiMsgs");
+ if(AI.state==="off")box.innerHTML=`<div class="am a">The AI assistant isn't available in this view. Open the simulator from its claude.ai page while signed in to use it. Hover tips and scenario hints still work.</div>`;
+ else box.innerHTML=(AI.msgs.length?"":`<div class="am a">Hi! I can explain RMM concepts, show you where to click, check your lab (devices, policies, alerts, tickets), and coach you through scenarios. What do you need?</div>`)+
+  AI.msgs.map(m=>`<div class="am ${m.role==="user"?"u":m.err?"err":"a"}">${m.role==="user"?esc(m.content).replace(/\n/g,"<br>"):aiMd(m.content||"…")}${m.tools&&m.tools.length?`<div class="tool">🔎 ${m.tools.map(esc).join(", ")}</div>`:""}</div>`).join("");
+ box.scrollTop=box.scrollHeight;
+ document.getElementById("aiSugg").innerHTML=AI.state==="on"&&!AI.busy&&AI.msgs.length<2?AI_SUGG.map(q=>`<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join(""):"";
+ const send=document.getElementById("aiSend");send.textContent=AI.busy?"Stop":"Send";document.getElementById("aiIn").disabled=AI.state==="off"}
+function aiToggle(open){const p=document.getElementById("aiPanel");const o=open??!p.classList.contains("open");p.classList.toggle("open",o);if(o){aiDraw();if(innerWidth>760)document.getElementById("aiIn").focus()}}
+async function aiAsk(q){q=String(q||"").trim();if(!q||AI.busy)return;aiToggle(true);if(AI.state!=="on"){aiDraw();return}
+ AI.msgs.push({role:"user",content:q});const reply={role:"assistant",content:"",tools:[]};AI.msgs.push(reply);AI.busy=true;aiDraw();
+ const hist=AI.msgs.slice(0,-1).filter(m=>!m.err&&m.content).slice(-12).map(m=>({role:m.role,content:m.content}));
+ hist[hist.length-1]={role:"user",content:`${AI_SYS}\n\nCurrent lab context (JSON):\n${aiCtx()}\n\nLearner: ${q}`};
+ if(hist[0].role!=="user")hist.shift();
+ AI.ctrl=new AbortController();
+ const tools=AI_TOOLS.map(t=>({...t,execute:async inp=>{reply.tools.push(t.name.replace("_"," "));aiDraw();return t.execute(inp||{})}}));
+ try{const r=await AI.sample(hist,{onText:({text})=>{reply.content=text;aiDraw()},signal:AI.ctrl.signal,tools,cache:false,modelTier:"default"});reply.content=r.text||reply.content||"(no answer)";if(r.truncated)reply.content+="\n\n(answer cut short — ask me to continue)"}
+ catch(e){if(e&&e.name==="AbortError"){reply.content=(reply.content||"")+"\n\n(stopped)"}
+  else if(e&&e.code==="not_granted"){AI.state="off";AI.msgs.pop()}
+  else{reply.err=true;reply.content=e&&e.code==="rate_limited"?"I'm getting too many requests right now. Wait a minute and try again.":"Something went wrong reaching the assistant"+(e&&e.message?`: ${e.message}`:".")+" Try again."}}
+ AI.busy=false;AI.ctrl=null;aiDraw()}
+(function aiInit(){const btn=document.getElementById("aiBtn"),panel=document.getElementById("aiPanel");
+ btn.addEventListener("click",()=>aiToggle());document.getElementById("aiClose").onclick=()=>aiToggle(false);
+ document.getElementById("aiClear").onclick=()=>{if(AI.ctrl)AI.ctrl.abort();AI.msgs=[];aiDraw()};
+ document.getElementById("aiForm").onsubmit=e=>{e.preventDefault();if(AI.busy){AI.ctrl&&AI.ctrl.abort();return}const i=document.getElementById("aiIn");const q=i.value;i.value="";aiAsk(q)};
+ document.getElementById("aiIn").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&innerWidth>760){e.preventDefault();document.getElementById("aiForm").requestSubmit()}});
+ document.getElementById("aiSugg").addEventListener("click",e=>{const b=e.target.closest("[data-q]");if(b)aiAsk(b.dataset.q)});
+ let tries=0;const connect=async()=>{if(window.claude&&typeof window.claude.use==="function"){try{AI.sample=await window.claude.use("sample")}catch(e){AI.sample=null}AI.state=AI.sample?"on":"off";aiDraw();return}
+  if(++tries<30)setTimeout(connect,200);else{AI.state="off";aiDraw()}};connect()})();
+A.askAI=v=>{const d=byId(S.devices,S.sel);aiAsk(v==="dev"&&d?`Check ${d.name} for me: is anything wrong or needing attention, and what should I do about it in this simulator?`:"Give me a hint for the next unfinished objective in my scenario. Don't give the full solution yet.")};
 if(!S.log.length)log("Welcome. Click 'Load sample MSP' or start a scenario. Hover (or tap) any ? for help.");
 if(innerWidth<760)document.getElementById("log").classList.add("min");
 render();
