@@ -659,7 +659,7 @@ const AI_TOOLS=[
 function aiMd(s){const lines=esc(s).split("\n");let out="",inL=false;for(let l of lines){l=l.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/`([^`]+)`/g,"<code>$1</code>");
  const m=l.match(/^\s*(?:[-*•]|\d+\.)\s+(.*)/);if(m){if(!inL){out+="<ul>";inL=true}out+=`<li>${m[1]}</li>`}else{if(inL){out+="</ul>";inL=false}if(l.trim())out+=`<div>${l.replace(/^#+\s*/,"")}</div>`}}return out+(inL?"</ul>":"")}
 function aiDraw(){const box=document.getElementById("aiMsgs");
- if(AI.state==="off")box.innerHTML=`<div class="am a">The AI assistant isn't available in this view. Open the simulator from its claude.ai page while signed in to use it. Hover tips and scenario hints still work.</div>`;
+ if(AI.state==="off")box.innerHTML=`<div class="am a">The AI assistant isn't available in this view. To use it, open the simulator on claude.ai: <a href=\"https://claude.ai/artifact/4ncysNBJeZYVWff4eCdNvz\" style=\"color:var(--acc)\">claude.ai/artifact/4ncysNBJeZYVWff4eCdNvz</a>. Everything else, including hover tips and scenario hints, works here.</div>`;
  else box.innerHTML=(AI.msgs.length?"":`<div class="am a">Hi! I can explain RMM concepts, show you where to click, check your lab (devices, policies, alerts, tickets), and coach you through scenarios. What do you need?</div>`)+
   AI.msgs.map(m=>`<div class="am ${m.role==="user"?"u":m.err?"err":"a"}">${m.role==="user"?esc(m.content).replace(/\n/g,"<br>"):aiMd(m.content||"…")}${m.tools&&m.tools.length?`<div class="tool">🔎 ${m.tools.map(esc).join(", ")}</div>`:""}</div>`).join("");
  box.scrollTop=box.scrollHeight;

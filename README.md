@@ -4,10 +4,12 @@
 
 Each simulator is a single self-contained web page with no installs, servers, or accounts to set up. They work on desktop and on a phone, and your lab is saved in your own browser.
 
+**Try them now:** **https://gitcich.github.io/itsim/** (no account needed)
+
 | Simulator | What you practice | Open it |
 |---|---|---|
-| **IT Lab Simulator** | Building and running a company's infrastructure: physical servers, VMware and Hyper-V virtualization, networking, Active Directory / Entra ID, security controls and backup | [Launch](https://claude.ai/artifact/31CfmsncKfZqiZkyk54GDh) |
-| **RMM Lab Simulator** | Managing many clients the way an MSP does, with NinjaOne-style remote monitoring & management: policies, alerting, patching, automation, ticketing, backup and remote support, plus an AI tutor | [Launch](https://claude.ai/artifact/4ncysNBJeZYVWff4eCdNvz) |
+| **IT Lab Simulator** | Building and running a company's infrastructure: physical servers, VMware and Hyper-V virtualization, networking, Active Directory / Entra ID, security controls and backup | [Launch](https://gitcich.github.io/itsim/itlab/) |
+| **RMM Lab Simulator** | Managing many clients the way an MSP does, with NinjaOne-style remote monitoring & management: policies, alerting, patching, automation, ticketing, backup and remote support, plus an AI tutor | [Launch](https://gitcich.github.io/itsim/rmmlab/) · [with AI assistant](https://claude.ai/artifact/4ncysNBJeZYVWff4eCdNvz) |
 
 **Who it's for:** help-desk and sysadmin learners, people moving into IT or MSP roles, interview prep, and anyone who sells to, supports or partners with IT teams and wants to understand the work hands-on.
 
@@ -132,6 +134,7 @@ Practice the day-to-day of an MSP technician in a console modeled on **NinjaOne-
 ## Repository layout
 
 ```
+index.html            Landing page served by GitHub Pages
 itlab/index.html      IT Lab Simulator (single file: HTML, CSS, JS)
 rmmlab/index.html     RMM Lab Simulator (single file)
 tests/                Headless tests (jsdom) that play through every scenario
@@ -140,7 +143,7 @@ tests/                Headless tests (jsdom) that play through every scenario
 ## Working on a simulator
 1. Edit `itlab/index.html` or `rmmlab/index.html`. There is no build step; open the file in a browser to try it.
 2. Run the tests: `cd tests && npm install && npm test`. They play through all 12 scenarios, check every hover-tip key, and exercise the AI assistant with a stubbed model.
-3. Commit on a branch, open a pull request, then republish the page.
+3. Commit on a branch and open a pull request. Merging to `main` updates the GitHub Pages site automatically; republish the claude.ai artifact separately.
 
 ## AI Lab Assistant (developer notes)
 The assistant uses the claude.ai artifact runtime's `sample` capability (`claude.use("sample")`), declared on the published artifact as `{"sample": {}}`. Its read-only lab tools are in `AI_TOOLS`, plus `open_page` for navigation. Its instructions and the simulator UI map are in `AI_SYS`; update the map when pages or buttons change. Panel layout (floating or sidebar, open state, width) is saved in localStorage under `rmmlab-ai-ui`.
@@ -150,6 +153,13 @@ The assistant uses the claude.ai artifact runtime's `sample` capability (`claude
 - Scenarios live in the `SCN` array as `[objective, checkFn, hint]`.
 - Lab state is saved in localStorage only (`itlab-v1`, `rmmlab-v1`). Bump the key if the state shape changes in a breaking way.
 
+## Hosting
+- **GitHub Pages:** served from the `main` branch root (`index.html` landing page, `.nojekyll` so files are served as-is). Everything works there except the AI assistant.
+- **claude.ai artifacts:** the RMM Lab artifact has the `sample` capability that powers the AI assistant.
+
+## License
+MIT, see [LICENSE](LICENSE). You're free to use, adapt and share these simulators; please keep the copyright notice.
+
 ## Versions
 | Tag | Change |
 |---|---|
@@ -157,3 +167,4 @@ The assistant uses the claude.ai artifact runtime's `sample` capability (`claude
 | `rmmlab-v1` | RMM Lab Simulator first release |
 | `rmmlab-v2` | AI Lab Assistant |
 | `rmmlab-v3` | Assistant can dock as a resizable sidebar |
+| `site-v1` | MIT license, GitHub Pages landing page |
