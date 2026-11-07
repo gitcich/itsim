@@ -89,6 +89,17 @@ tr.sel td{background:#14302b}tr.click{cursor:pointer}tr.click:hover td{backgroun
 #aiForm{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--line)}
 #aiForm textarea{resize:none;height:40px}
 @media (max-width:760px){#aiBtn{left:auto;right:12px;bottom:58px}#aiPanel{left:8px;right:8px;width:auto;bottom:8px;height:78vh;max-width:none}}
+
+/* AI sidebar mode */
+#aiGrip{display:none;position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:2}
+#aiGrip:hover,#aiGrip.drag{background:linear-gradient(90deg,transparent 3px,var(--acc) 3px,var(--acc) 5px,transparent 5px)}
+body.ai-side.ai-open #aiPanel{left:auto;right:0;top:var(--hdr,52px);bottom:0;height:auto;width:var(--aiw,400px);max-width:none;border-radius:0;border:0;border-left:1px solid var(--acc2);box-shadow:-8px 0 24px #0006;z-index:25}
+body.ai-side.ai-open #aiGrip{display:block}
+body.ai-side.ai-open .layout{margin-right:var(--aiw,400px)}
+body.ai-side.ai-open #log{right:calc(var(--aiw,400px) + 12px)}
+body.ai-side.ai-open #aiBtn{display:none}
+body.ai-resizing{user-select:none;cursor:ew-resize}
+@media (max-width:760px){body.ai-side.ai-open #aiPanel{width:100%;left:0}body.ai-side.ai-open .layout{margin-right:0}body.ai-side.ai-open #log{display:none}#aiGrip{display:none!important}#aiDock{display:none}}
 </style>
 </head>
 <body>
@@ -105,8 +116,8 @@ tr.sel td{background:#14302b}tr.click{cursor:pointer}tr.click:hover td{backgroun
 <div id="log"><div class="hd" data-act="logtoggle"><span>Activities</span><span id="logcount"></span></div><div class="bd" id="logbd"></div></div>
 <div id="tip"></div><div id="modalRoot"></div>
 <button id="aiBtn" type="button" data-tip="assistant">✦ Ask AI</button>
-<div id="aiPanel" role="dialog" aria-label="AI assistant">
- <div class="ah"><span class="logo" style="width:22px;height:22px">AI</span><b>Lab Assistant</b><span class="tip-ic" data-tip="assistant">?</span><button class="sm" type="button" id="aiClear">New chat</button><button class="sm" type="button" id="aiClose">✕</button></div>
+<div id="aiPanel" role="dialog" aria-label="AI assistant"><div id="aiGrip" title="Drag to resize"></div>
+ <div class="ah"><span class="logo" style="width:22px;height:22px">AI</span><b>Lab Assistant</b><span class="tip-ic" data-tip="assistant">?</span><button class="sm" type="button" id="aiDock" data-tip="aiside">⇥ Dock</button><button class="sm" type="button" id="aiClear">New chat</button><button class="sm" type="button" id="aiClose">✕</button></div>
  <div id="aiMsgs"></div>
  <div id="aiSugg"></div>
  <form id="aiForm"><textarea id="aiIn" placeholder="Ask about RMM, your lab, or your scenario…"></textarea><button class="pri" type="submit" id="aiSend">Send</button></form>
@@ -152,7 +163,8 @@ disk:{t:"Disk usage",d:"Percent of the system drive used. Above ~90%, Windows up
 svc:{t:"Windows services",d:"Background programs (Print Spooler, Windows Update, etc.). A stopped service is a classic help-desk ticket.",h:"Use a service condition to alert, and a restart script or remote session to fix.",a:"Service monitors in every RMM."},
 compliance:{t:"Patch compliance",d:"Share of Windows devices with no outstanding Critical or Important patches. Held, rejected and manually deferred patches don't count against it.",h:"Patching page shows compliance per organization.",a:"Compliance reporting in Intune / Autopatch reports."},
 scn:{t:"Practice scenarios",d:"Guided exercises based on everyday MSP and help-desk work. Each one loads the sample MSP and checks your objectives live.",h:"Start one; the checklist appears at the top of every page.",a:"Vendor academies (NinjaOne Dojo & training, Datto/Kaseya University, N-able training) and free trials."},
-assistant:{t:"AI Lab Assistant",d:"A built-in AI tutor available on every page. It can explain concepts, tell you where to click, look up your lab's devices, policies, alerts and tickets, and coach you through scenarios with hints.",h:"Tap ✦ Ask AI (bottom of the screen), pick a suggestion or type a question. Use 'Get a hint' on a running scenario or 'Ask AI' on a device. It can open pages for you but never changes settings — you do the clicking.",a:"Most major RMM and PSA vendors (NinjaOne, ConnectWise, Kaseya/Datto, N-able) and Microsoft (Security Copilot, Copilot in Intune) now ship AI assistants for technicians."},
+aiside:{t:"Dock as sidebar",d:"Pins the assistant to the right edge at full height so you can chat while you work; the simulator shrinks to fit beside it and the sidebar stays open as you change pages.",h:"Tap ⇥ Dock in the assistant header. Drag the sidebar's left edge to resize it. Tap ⧉ Pop out to go back to the floating window. Your choice is remembered on this browser. On a phone the docked assistant fills the screen.",a:"Copilot-style side panels work the same way in Microsoft 365, Edge, and many RMM/PSA consoles."},
+assistant:{t:"AI Lab Assistant",d:"A built-in AI tutor available on every page. It can explain concepts, tell you where to click, look up your lab's devices, policies, alerts and tickets, and coach you through scenarios with hints.",h:"Tap ✦ Ask AI (bottom of the screen), pick a suggestion or type a question. Use ⇥ Dock to keep it open as a sidebar. Use 'Get a hint' on a running scenario or 'Ask AI' on a device. It can open pages for you but never changes settings — you do the clicking.",a:"Most major RMM and PSA vendors (NinjaOne, ConnectWise, Kaseya/Datto, N-able) and Microsoft (Security Copilot, Copilot in Intune) now ship AI assistants for technicians."},
 health:{t:"Health overview",d:"Fleet-wide status: devices online, active alerts, open tickets, patch compliance, AV and backup coverage.",h:"Start your day here; drill into whatever is red.",a:"Custom dashboards and scheduled reports."}
 };
 
@@ -653,7 +665,7 @@ function aiDraw(){const box=document.getElementById("aiMsgs");
  box.scrollTop=box.scrollHeight;
  document.getElementById("aiSugg").innerHTML=AI.state==="on"&&!AI.busy&&AI.msgs.length<2?AI_SUGG.map(q=>`<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join(""):"";
  const send=document.getElementById("aiSend");send.textContent=AI.busy?"Stop":"Send";document.getElementById("aiIn").disabled=AI.state==="off"}
-function aiToggle(open){const p=document.getElementById("aiPanel");const o=open??!p.classList.contains("open");p.classList.toggle("open",o);if(o){aiDraw();if(innerWidth>760)document.getElementById("aiIn").focus()}}
+function aiToggle(open){const p=document.getElementById("aiPanel");const o=open??!p.classList.contains("open");p.classList.toggle("open",o);document.body.classList.toggle("ai-open",o);aiUI.open=o;aiSaveUI();if(o){aiDraw();if(innerWidth>760)document.getElementById("aiIn").focus()}}
 async function aiAsk(q){q=String(q||"").trim();if(!q||AI.busy)return;aiToggle(true);if(AI.state!=="on"){aiDraw();return}
  AI.msgs.push({role:"user",content:q});const reply={role:"assistant",content:"",tools:[]};AI.msgs.push(reply);AI.busy=true;aiDraw();
  const hist=AI.msgs.slice(0,-1).filter(m=>!m.err&&m.content).slice(-12).map(m=>({role:m.role,content:m.content}));
@@ -674,6 +686,23 @@ async function aiAsk(q){q=String(q||"").trim();if(!q||AI.busy)return;aiToggle(tr
  document.getElementById("aiSugg").addEventListener("click",e=>{const b=e.target.closest("[data-q]");if(b)aiAsk(b.dataset.q)});
  let tries=0;const connect=async()=>{if(window.claude&&typeof window.claude.use==="function"){try{AI.sample=await window.claude.use("sample")}catch(e){AI.sample=null}AI.state=AI.sample?"on":"off";aiDraw();return}
   if(++tries<30)setTimeout(connect,200);else{AI.state="off";aiDraw()}};connect()})();
+
+/* AI panel layout: floating window or docked sidebar */
+let aiUI={mode:"float",open:false,w:400};
+try{Object.assign(aiUI,JSON.parse(localStorage.getItem("rmmlab-ai-ui")||"{}"))}catch(e){}
+function aiSaveUI(){try{localStorage.setItem("rmmlab-ai-ui",JSON.stringify(aiUI))}catch(e){}}
+function aiApplyUI(){const side=aiUI.mode==="side";document.body.classList.toggle("ai-side",side);
+ aiUI.w=Math.min(Math.max(300,aiUI.w||400),Math.max(320,innerWidth-420));document.body.style.setProperty("--aiw",aiUI.w+"px");
+ const h=document.querySelector("header");if(h)document.body.style.setProperty("--hdr",h.offsetHeight+"px");
+ const b=document.getElementById("aiDock");if(b)b.textContent=side?"⧉ Pop out":"⇥ Dock"}
+function aiSetMode(m){aiUI.mode=m;aiSaveUI();aiApplyUI();aiToggle(true)}
+(function aiLayoutInit(){document.getElementById("aiDock").onclick=()=>aiSetMode(aiUI.mode==="side"?"float":"side");
+ const grip=document.getElementById("aiGrip");let drag=false;
+ grip.addEventListener("pointerdown",e=>{drag=true;grip.classList.add("drag");document.body.classList.add("ai-resizing");grip.setPointerCapture&&grip.setPointerCapture(e.pointerId);e.preventDefault()});
+ grip.addEventListener("pointermove",e=>{if(!drag)return;aiUI.w=innerWidth-e.clientX;aiApplyUI()});
+ const end=()=>{if(!drag)return;drag=false;grip.classList.remove("drag");document.body.classList.remove("ai-resizing");aiSaveUI()};
+ grip.addEventListener("pointerup",end);grip.addEventListener("pointercancel",end);
+ addEventListener("resize",aiApplyUI);aiApplyUI();if(aiUI.open&&aiUI.mode==="side")aiToggle(true)})();
 A.askAI=v=>{const d=byId(S.devices,S.sel);aiAsk(v==="dev"&&d?`Check ${d.name} for me: is anything wrong or needing attention, and what should I do about it in this simulator?`:"Give me a hint for the next unfinished objective in my scenario. Don't give the full solution yet.")};
 if(!S.log.length)log("Welcome. Click 'Load sample MSP' or start a scenario. Hover (or tap) any ? for help.");
 if(innerWidth<760)document.getElementById("log").classList.add("min");

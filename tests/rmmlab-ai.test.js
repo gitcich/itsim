@@ -1,7 +1,7 @@
 // Stubs the artifact "sample" capability and checks the assistant panel, tools and fallbacks.
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const html=fs.readFileSync('../rmmlab/index.html','utf8');
-function boot(stub){return new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,beforeParse(w){if(stub)w.claude={use:async n=>n==='sample'?stub(w):null}}})}
+function boot(stub){return new JSDOM(html,{url:'https://lab.test/',runScripts:'dangerously',pretendToBeVisual:true,beforeParse(w){if(stub)w.claude={use:async n=>n==='sample'?stub(w):null}}})}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));let fail=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fail++};
 (async()=>{
  let seen=null;
@@ -22,6 +22,18 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));let fail=0;const ok=(c,m)=>{cons
  w.eval("A.startScn('s3')");d.querySelector('#modalRoot [data-y]').dispatchEvent(new w.MouseEvent('click',{bubbles:true}));
  d.querySelector('[data-act=askAI][data-v=hint]').dispatchEvent(new w.MouseEvent('click',{bubbles:true}));await wait(100);
  ok(seen.input.length===3&&/hint/.test(seen.input[2].content)&&/Self-healing/.test(seen.input[2].content),'hint request includes scenario + history');
+ // sidebar mode
+ d.getElementById('aiDock').dispatchEvent(new w.MouseEvent('click',{bubbles:true}));
+ ok(d.body.classList.contains('ai-side')&&d.body.classList.contains('ai-open'),'dock switches to sidebar');
+ ok(d.getElementById('aiDock').textContent.includes('Pop out'),'dock button relabels');
+ ok(JSON.parse(w.localStorage.getItem('rmmlab-ai-ui')).mode==='side','sidebar mode remembered');
+ w.eval("A.tab('pols')");w.eval('commit()');ok(d.body.classList.contains('ai-open'),'sidebar stays open across pages');
+ const g=d.getElementById('aiGrip');g.dispatchEvent(new w.Event('pointerdown',{cancelable:true}));
+ const pm=new w.Event('pointermove');pm.clientX=w.innerWidth-520;g.dispatchEvent(pm);g.dispatchEvent(new w.Event('pointerup'));
+ ok(d.body.style.getPropertyValue('--aiw')==='520px','sidebar resizes by dragging');
+ d.getElementById('aiClose').dispatchEvent(new w.MouseEvent('click',{bubbles:true}));ok(!d.body.classList.contains('ai-open'),'close hides sidebar');
+ d.getElementById('aiBtn').dispatchEvent(new w.MouseEvent('click',{bubbles:true}));ok(d.body.classList.contains('ai-open')&&d.body.classList.contains('ai-side'),'reopens docked');
+ d.getElementById('aiDock').dispatchEvent(new w.MouseEvent('click',{bubbles:true}));ok(!d.body.classList.contains('ai-side'),'pop out returns to floating');
  ok(errs.length===0,'no page errors '+errs.join('; '));
  // no capability → graceful off state
  const d2=boot(null);await wait(6500);d2.window.document.getElementById('aiBtn').dispatchEvent(new d2.window.MouseEvent('click',{bubbles:true}));
