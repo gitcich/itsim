@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>itsim: Hands-on IT Training Simulators</title>
+<meta name="description" content="Free browser simulators for practicing IT infrastructure and MSP/RMM work, with hover help on every element and guided scenarios.">
+<style>
+:root{--bg:#0f1318;--panel:#171c23;--line:#2b3440;--text:#dde4ec;--mute:#8b98a7;--a1:#1d9bd1;--a2:#2fb39a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:40px 20px 60px}
+h1{font-size:34px;margin:0 0 8px}
+.lead{color:var(--mute);font-size:18px;max-width:700px;margin:0 0 32px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column}
+.card h2{margin:0 0 6px;font-size:21px;display:flex;align-items:center;gap:10px}
+.badge{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff}
+.card p{color:var(--mute);margin:0 0 12px}
+.card ul{margin:0 0 18px;padding-left:20px;font-size:14px}
+.card li{margin-bottom:4px}
+.btns{margin-top:auto;display:flex;gap:10px;flex-wrap:wrap}
+a.btn{display:inline-block;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;border:1px solid var(--line);color:var(--text)}
+a.btn.pri{color:#fff;border:0}
+.it a.btn.pri,.it .badge{background:linear-gradient(135deg,var(--a1),#0b6e99)}
+.rmm a.btn.pri,.rmm .badge{background:linear-gradient(135deg,var(--a2),#155a8a)}
+.note{font-size:13px;color:var(--mute);margin-top:28px;border-top:1px solid var(--line);padding-top:18px}
+.note a{color:var(--a1)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>itsim</h1>
+  <p class="lead">Free, hands-on simulators for practicing real IT and managed-services work in your browser. Build an environment, run it, break it, fix it. Every element explains itself, and guided scenarios check your work as you go.</p>
+
+  <div class="grid">
+    <div class="card it">
+      <h2><span class="badge">IT</span>IT Lab Simulator</h2>
+      <p>Build and run a company's infrastructure in a VMware vSphere-style or Microsoft Hyper-V-style console.</p>
+      <ul>
+        <li>Hosts, clusters, HA, shared storage, live migration</li>
+        <li>VLANs, firewall rules, DHCP, DNS, site-to-site VPN</li>
+        <li>Active Directory, Group Policy, Entra ID sync</li>
+        <li>MFA, EDR, SIEM, backups, security posture score</li>
+        <li>6 build scenarios with live checklists</li>
+      </ul>
+      <div class="btns"><a class="btn pri" href="./itlab/">Launch IT Lab</a></div>
+    </div>
+
+    <div class="card rmm">
+      <h2><span class="badge">RMM</span>RMM Lab Simulator</h2>
+      <p>Practice an MSP technician's day in a console modeled on NinjaOne-style remote monitoring &amp; management.</p>
+      <ul>
+        <li>Clients, locations, agent policies with inheritance</li>
+        <li>Alert conditions with self-healing automations</li>
+        <li>Patch Tuesday, approvals, third-party patching</li>
+        <li>Ticketing with SLAs, remote sessions, backups</li>
+        <li>6 practice scenarios, plus an AI tutor on claude.ai</li>
+      </ul>
+      <div class="btns"><a class="btn pri" href="./rmmlab/">Launch RMM Lab</a><a class="btn" href="https://claude.ai/artifact/4ncysNBJeZYVWff4eCdNvz">Open with AI assistant</a></div>
+    </div>
+  </div>
+
+  <div class="note">
+    No sign-up, no install, and no real systems are touched. Your lab is saved in your own browser. Works on desktop and phone; tap the <b>?</b> icons for definitions, how-tos and alternative technologies.<br><br>
+    The RMM Lab Simulator is an independent training tool modeled on NinjaOne-style workflows and is not affiliated with or endorsed by NinjaOne. Its AI assistant runs only when the simulator is opened on claude.ai.<br><br>
+    Source code and feature list: <a href="https://github.com/gitcich/itsim">github.com/gitcich/itsim</a> · MIT License
+  </div>
+</div>
+</body>
+</html>
