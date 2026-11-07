@@ -62,6 +62,12 @@ Build and operate a company's IT environment in either a **VMware vSphere-style*
 - Backup jobs to local, **immutable**, or **offsite/cloud** repositories with RPO choices, plus **restore tests**
 - **Security posture score** (12 checks) on the dashboard, showing gaps at a glance
 
+### Learning Library
+- **50 networking guides** from [natted.cloud/learn](https://natted.cloud/learn) in seven categories (Fundamentals, Routing & Protocols, Security, Troubleshooting, Cloud & Modern Networking, Switching & Layer 2, Real-World Scenarios), each with a short summary and a link to the full guide
+- Search and category filters
+- **Library → simulator:** "Try it in the simulator" buttons jump to the matching card (VLANs, firewall, DHCP, DNS, VPN, clusters, storage, identity, security) and highlight it
+- **Simulator → library:** 📚 buttons on section cards, a "Learn more" list in every pinned hover tip, and "Study first" guides on each scenario
+
 ### Dashboard
 - Live topology of clusters, hosts and VMs, host load, and the posture checklist
 
@@ -150,6 +156,7 @@ The assistant uses the claude.ai artifact runtime's `sample` capability (`claude
 
 ## Conventions
 - Hover-tip content lives in the `G` glossary object in each file. Every `data-tip` / `tip()` key must exist there; the tests check this.
+- Library guides live in the `LIB` array in `itlab/index.html` (`[id, title, category, summary, glossary keys, url slug]`); `LIB_ANCHOR` maps glossary keys to the simulator card (`data-anchor`) where they're practiced.
 - Scenarios live in the `SCN` array as `[objective, checkFn, hint]`.
 - Lab state is saved in localStorage only (`itlab-v1`, `rmmlab-v1`). Bump the key if the state shape changes in a breaking way.
 
@@ -168,3 +175,4 @@ MIT, see [LICENSE](LICENSE). You're free to use, adapt and share these simulator
 | `rmmlab-v2` | AI Lab Assistant |
 | `rmmlab-v3` | Assistant can dock as a resizable sidebar |
 | `site-v1` | MIT license, GitHub Pages landing page |
+| `itlab-v2` | Learning Library linked to natted.cloud/learn guides |
