@@ -43,6 +43,7 @@ Build and operate a company's IT environment in either a **VMware vSphere-style*
 ### Virtualization
 - Create VMs with a server role (Domain Controller, RODC, DHCP, File, SQL, Web, Backup, Log Collector, RDS), guest OS, vCPU, RAM, disk, host, storage and VLAN
 - Power on/off, **snapshots/checkpoints** (revert, consolidate) with warnings for risky actions like reverting a DC
+- **Resize VMs:** change vCPU, memory and disk with real hypervisor rules. Anything goes while powered off. On a running vSphere VM, only increases, and only with **CPU/memory hot add** (set while off). On a running Hyper-V VM, memory can go up or down but vCPU needs a shutdown. Disks extend but never shrink. Host core, RAM, free-capacity and datastore checks apply, with right-sizing warnings for very wide VMs
 - **Live migration** (needs shared storage and the same hypervisor) or **cold migration**, including cross-hypervisor V2V
 
 ### Networking
@@ -187,3 +188,4 @@ MIT, see [LICENSE](LICENSE). You're free to use, adapt and share these simulator
 | `site-v1` | MIT license, GitHub Pages landing page |
 | `itlab-v2` | Learning Library linked to natted.cloud/learn guides |
 | `itlab-v3` | Network diagram with device IDs, inventory and SVG/PNG/CSV export |
+| `itlab-v4` | Resize VMs (vCPU, memory, disk) with hot add rules |

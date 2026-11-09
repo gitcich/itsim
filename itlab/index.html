@@ -148,6 +148,8 @@ snap:{t:"Snapshot / Checkpoint",d:"A point-in-time capture of a VM's disk (and o
 maint:{t:"Maintenance mode",d:"Takes a host out of service safely for patching or hardware work. Running VMs must be moved off first.",h:"If the host is in a cluster with load balancing on, VMs are evacuated automatically. Otherwise migrate or shut down VMs yourself.",a:"Hyper-V: 'Pause → Drain Roles'. Proxmox: node maintenance mode."},
 failure:{t:"Host failure test",d:"Simulates a host losing power or crashing — a standard resilience test to prove your HA design works.",h:"Run it on a host with running VMs. With HA, shared storage and spare capacity, VMs restart elsewhere. Without them, they stay down until the host is repaired.",a:"Real-world: planned failover tests, chaos engineering tools (in cloud) and DR runbooks."},
 vm:{t:"Virtual machine",d:"A software computer with virtual CPU, RAM, disk and NIC, running its own OS on a host.",h:"Virtualization → New VM. Pick a role, size it, place it on a host, attach it to a network/VLAN and a datastore.",a:"Containers (Docker/Kubernetes) for app workloads, PaaS (Azure App Service), or cloud VMs."},
+resize:{t:"Resize a VM (vCPU, memory, disk)",d:"Change a VM's virtual CPUs, memory or disk size after it's built: the everyday way to fix a slow or over-provisioned server.",h:"Virtualization → Resize. Powered off: change anything. Running on vSphere: only increases, and only with CPU/memory hot add enabled. Running on Hyper-V: memory up or down live, vCPU needs a shutdown. Disks extend live on both but never shrink; afterwards, extend the volume inside the guest OS.",a:"Right-sizing tools: VMware Aria Operations, SCVMM/Azure Monitor recommendations, Azure Advisor and AWS Compute Optimizer for cloud VMs."},
+hotadd:{t:"CPU / memory hot add",d:"A per-VM vSphere setting that lets you add vCPUs and memory while the VM is running. It is off by default and can only be turned on while the VM is powered off.",h:"Enable it at creation or during a planned shutdown for servers you may need to grow without downtime. It can't remove resources live, and on large VMs it can disable vNUMA, so don't turn it on everywhere.",a:"Hyper-V: runtime memory resize and Dynamic Memory (memory only). Cloud VMs: change instance size with a reboot."},
 vcpu:{t:"vCPU",d:"A virtual processor mapped to a physical core's time. Hosts can be overcommitted (more vCPUs than cores) because most VMs idle.",h:"Start small (2 vCPU) and grow. This sim allows up to 4 vCPU per physical core.",a:"Sizing tools: VMware Aria Operations, Azure Migrate assessment, RVTools for inventory."},
 ram:{t:"Memory (GB)",d:"RAM assigned to a VM. Unlike CPU, memory overcommit is risky; this sim does not allow powered-on VMs to exceed host RAM.",h:"Size to the workload: DCs ~4–8 GB, file servers 8 GB, SQL 16 GB+.",a:"Hyper-V Dynamic Memory and VMware ballooning reclaim idle RAM."},
 overcommit:{t:"Capacity & overcommit",d:"How much of the host's physical resources are allocated. High utilization means no room to absorb a failed host.",h:"Keep clusters at N+1: total load should fit even with your biggest host down.",a:"Capacity planning tools: Aria Operations, SCOM, Azure Monitor."},
@@ -308,11 +310,11 @@ const A={
    {k:"hostId",label:"Place on host",tip:"host",type:"select",options:hs.map(h=>[h.id,`${h.name} — ${TERMS[h.hyp].hv}`])},
    {k:"storageId",label:"Store disk on",tip:"datastore",type:"select",value:(S.storage.find(s=>isShared(s))||S.storage[0]||{}).id,options:[["","(choose)"]].concat(S.storage.map(s=>[s.id,`${s.name} — ${STYPES[s.type]}`]))},
    {k:"vlanId",label:"Network / VLAN",tip:"vlan",type:"select",options:[["","(none — isolated)"]].concat(S.vlans.map(v=>[v.id,`VLAN ${v.vlan} ${v.name}`]))},
-   {k:"on",label:"Power on after create",type:"checkbox",value:true}],f=>{
+   {k:"hotAdd",label:"CPU / memory hot add (VMware hosts)",tip:"hotadd",type:"checkbox",value:false},{k:"on",label:"Power on after create",type:"checkbox",value:true}],f=>{
    const h=byId(S.hosts,f.hostId);if(!f.storageId)return"Choose storage (add storage on the Datacenter page if none).";
    if(!hostSees(h,f.storageId))return`${h.name} can't see that storage. Present it to the host first.`;
    if(S.vms.some(v=>v.name===f.name))return"VM name already used.";
-   const vm={id:uid("v"),name:f.name,role:f.role,os:f.os,vcpu:Math.max(1,+f.vcpu),ram:Math.max(1,+f.ram),disk:+f.disk||40,hostId:h.id,storageId:f.storageId,vlanId:f.vlanId,power:"off",snaps:[]};
+   const vm={id:uid("v"),name:f.name,role:f.role,os:f.os,vcpu:Math.max(1,+f.vcpu),ram:Math.max(1,+f.ram),disk:+f.disk||40,hostId:h.id,storageId:f.storageId,vlanId:f.vlanId,power:"off",snaps:[],hotAdd:h.hyp==="vmware"&&!!f.hotAdd};
    if(f.on&&!fits(h,vm))return`${h.name} lacks capacity to power this on. Lower size or pick another host.`;
    if(f.on)vm.power="on";S.vms.push(vm);
    if(vm.role.includes("Domain Controller")||vm.role.includes("RODC")){}
@@ -321,6 +323,29 @@ const A={
    if(v.power==="on"){v.power="off";log(`${v.name} shut down`);return}
    if(h.status!=="online")return toast(`${h.name} is ${h.status}. Migrate the VM to a healthy host first.`);
    if(!fits(h,v))return toast(`${h.name} is out of capacity.`);v.power="on";log(`${v.name} powered on`,"ok")},
+ resize(id){const v=byId(S.vms,id),h=byId(S.hosts,v.hostId);if(!h)return toast("This VM's host no longer exists.");const vmw=h.hyp==="vmware",on=v.power==="on";
+   const note=on?(vmw?(v.hotAdd?"Running with CPU/memory hot add ON: you can increase vCPU and memory live. Decreasing either requires shutting the VM down.":"Running with hot add OFF: shut the VM down to change vCPU or memory (hot add can only be enabled while the VM is off). Disks can still be extended live."):"Running on Hyper-V: memory can be raised or lowered live (runtime memory resize). Changing the vCPU count requires shutting the VM down. Disks can be extended live."):"VM is off: any change is allowed. Host capacity is checked when you power it on.";
+   const st=byId(S.storage,v.storageId),used=st?S.vms.filter(x=>x.storageId===st.id).reduce((a,x)=>a+x.disk,0):0;
+   form(`Resize ${v.name}`,[{k:"_n",type:"note",label:note},{k:"vcpu",label:`vCPU (host has ${h.cpu} cores)`,tip:"resize",type:"number",value:v.vcpu},{k:"ram",label:`Memory GB (host has ${h.ram} GB)`,tip:"ram",type:"number",value:v.ram},
+    {k:"disk",label:`Disk GB (extend only${st?`; ${st.name} free: ${Math.max(0,Math.round(st.cap*1000-used))} GB`:""})`,type:"number",value:v.disk},
+    ...(vmw?[{k:"hotAdd",label:"CPU / memory hot add (change only while powered off)",tip:"hotadd",type:"checkbox",value:!!v.hotAdd}]:[])],f=>{
+    const nv=Math.round(+f.vcpu),nr=Math.round(+f.ram),nd=Math.round(+f.disk),ha=vmw?!!f.hotAdd:false;
+    if(!(nv>=1&&nr>=1&&nd>=1))return"Enter whole numbers of 1 or more.";
+    if(nv>h.cpu)return`A VM can't have more vCPUs than ${h.name} has physical cores (${h.cpu}).`;
+    if(nr>h.ram)return`A VM can't have more memory than ${h.name} has (${h.ram} GB).`;
+    if(nd<v.disk)return"Virtual disks can be extended but not shrunk. To use less space, build a smaller disk and migrate the data.";
+    if(st&&(used-v.disk+nd)>st.cap*1000)return`${st.name} doesn't have room to extend the disk to ${nd} GB.`;
+    if(on){if(vmw&&ha!==!!v.hotAdd)return"Hot add can only be turned on or off while the VM is powered off.";
+     if(nv!==v.vcpu){if(!vmw)return"Hyper-V can't change the vCPU count of a running VM. Shut it down first.";if(!v.hotAdd)return"CPU hot add is off for this VM. Shut it down to change vCPUs, or shut down and enable hot add for next time.";if(nv<v.vcpu)return"vCPUs can't be removed from a running VM. Shut it down to reduce them."}
+     if(nr!==v.ram&&vmw){if(!v.hotAdd)return"Memory hot add is off for this VM. Shut it down to change memory.";if(nr<v.ram)return"vSphere can't remove memory from a running VM. Shut it down to reduce it."}
+     const u=hostUse(h),fv=h.cpu*4-(u.vcpu-v.vcpu),fr=h.ram-(u.ram-v.ram);
+     if(nv>fv||nr>fr)return`${h.name} doesn't have enough free capacity for this running VM (room for ${fv} vCPU / ${fr} GB). Migrate it to a less busy host or free up resources.`}
+    if(nv===v.vcpu&&nr===v.ram&&nd===v.disk&&ha===!!v.hotAdd)return;
+    const ch=[nv!==v.vcpu&&`${v.vcpu}→${nv} vCPU`,nr!==v.ram&&`${v.ram}→${nr} GB RAM`,nd!==v.disk&&`disk ${v.disk}→${nd} GB`,ha!==!!v.hotAdd&&`hot add ${ha?"on":"off"}`].filter(Boolean).join(", ");
+    const grewDisk=nd>v.disk;Object.assign(v,{vcpu:nv,ram:nr,disk:nd,hotAdd:ha});log(`${v.name} resized${on?" live":""}: ${ch}`,"ok");
+    if(grewDisk)log(`Next step: extend the volume inside ${v.name}'s guest OS (Disk Management / growpart + resize2fs)`);
+    if(nv>h.cpu/2)log(`${v.name} now has more than half of ${h.name}'s cores: wide VMs can cross NUMA nodes and wait longer for CPU. Right-size if it doesn't need them.`,"warn");
+    if(v.snaps.length)log(`${v.name} has ${v.snaps.length} ${T("snap").toLowerCase()}(s); reverting one also reverts this resize`,"warn")})},
  snap(id){const v=byId(S.vms,id);v.snaps.push(new Date().toLocaleString());log(`${T("snap")} taken of ${v.name}`)},
  revert(id){const v=byId(S.vms,id);if(!v.snaps.length)return;
    if(v.role.includes("Domain Controller")||v.role.includes("RODC"))log(`Caution: reverting a domain controller can cause USN rollback in multi-DC domains`,"warn");
@@ -520,9 +545,9 @@ function vDC(){return`<h2>Datacenter ${tip("host")}</h2><p class="sub">Physical 
 function vVirt(){return`<h2>Virtualization — ${T("console")} ${tip("vm")}</h2><p class="sub">Provision and operate virtual machines. ${T("snap")}s ${tip("snap")} · ${T("mig")} ${tip("mig")}</p>
  <div class="card" data-anchor="virt-vms"><div class="row" style="justify-content:space-between"><h3>Virtual machines ${libBtn("vm")}</h3><button class="pri" data-act="newVM">+ New VM</button></div>
  ${S.vms.length?`<div class="tw"><table><tr><th>VM</th><th>Role ${tip("role")}</th><th>Size</th><th>Host</th><th>${T("store")}</th><th>Network</th><th>State</th><th>${T("snap")}s</th><th>Actions</th></tr>
- ${S.vms.map(v=>{const h=byId(S.hosts,v.hostId),st=byId(S.storage,v.storageId),n=byId(S.vlans,v.vlanId);return`<tr><td><b>${esc(v.name)}</b><div style="font-size:11px;color:var(--mute)">${esc(v.os)}</div></td><td>${esc(v.role)}</td><td>${v.vcpu} vCPU · ${v.ram} GB · ${v.disk} GB</td>
+ ${S.vms.map(v=>{const h=byId(S.hosts,v.hostId),st=byId(S.storage,v.storageId),n=byId(S.vlans,v.vlanId);return`<tr><td><b>${esc(v.name)}</b><div style="font-size:11px;color:var(--mute)">${esc(v.os)}</div></td><td>${esc(v.role)}</td><td>${v.vcpu} vCPU · ${v.ram} GB · ${v.disk} GB${v.hotAdd?` <span class="pill acc" data-tip="hotadd">hot add</span>`:""}</td>
  <td>${h?esc(h.name):"?"}</td><td>${st?esc(st.name):"?"}</td><td>${n?"VLAN "+n.vlan:"—"}</td><td>${statusPill(v.power)} ${backedUp(v)?'<span class="pill acc">backed up</span>':""}</td><td>${v.snaps.length}</td>
- <td><div class="row"><button class="sm" data-act="power" data-v="${v.id}">${v.power==="on"?"Shut down":"Power on"}</button><button class="sm" data-act="migrate" data-v="${v.id}" data-tip="mig">Migrate</button>
+ <td><div class="row"><button class="sm" data-act="power" data-v="${v.id}">${v.power==="on"?"Shut down":"Power on"}</button><button class="sm" data-act="resize" data-v="${v.id}" data-tip="resize">Resize</button><button class="sm" data-act="migrate" data-v="${v.id}" data-tip="mig">Migrate</button>
  <button class="sm" data-act="snap" data-v="${v.id}" data-tip="snap">${T("snap")}</button>${v.snaps.length?`<button class="sm" data-act="revert" data-v="${v.id}">Revert</button><button class="sm" data-act="delSnaps" data-v="${v.id}">Consolidate</button>`:""}<button class="sm" data-act="delVM" data-v="${v.id}">✕</button></div></td></tr>`}).join("")}</table></div>`:'<div class="empty">No VMs. You need at least one host and one storage location first.</div>'}</div>`}
 
 function vNet(){return`<h2>Network ${tip("vlan")}</h2><p class="sub">Segmentation, switching, firewalling and core network services.</p><div class="grid g2">
@@ -586,7 +611,7 @@ function vScn(){const st=scnState();
 /* ===================== MODALS ===================== */
 function closeModal(){document.getElementById("modalRoot").innerHTML=""}
 function form(title,fields,onSubmit){
- const html=fields.map(f=>{const lab=`<label>${esc(f.label)} ${f.tip?tip(f.tip):""}</label>`;
+ const html=fields.map(f=>{if(f.type==="note")return`<div class="field" style="font-size:13px;background:var(--panel2);border-left:3px solid var(--acc);padding:8px 10px;border-radius:6px">${esc(f.label)}</div>`;const lab=`<label>${esc(f.label)} ${f.tip?tip(f.tip):""}</label>`;
   if(f.type==="select")return`<div class="field">${lab}<select name="${f.k}">${f.options.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o];return`<option value="${esc(v)}" ${f.value==v?"selected":""}>${esc(l)}</option>`}).join("")}</select></div>`;
   if(f.type==="checks")return`<div class="field">${lab}<div class="checks">${f.options.length?f.options.map(([v,l])=>`<label><input type="checkbox" name="${f.k}" value="${esc(v)}" ${(f.value||[]).includes(v)?"checked":""}>${esc(l)}</label>`).join(""):'<span class="empty">none available</span>'}</div></div>`;
   if(f.type==="checkbox")return`<div class="field"><label style="color:var(--text)"><input type="checkbox" name="${f.k}" style="width:auto" ${f.value?"checked":""}> ${esc(f.label)} ${f.tip?tip(f.tip):""}</label></div>`;
@@ -596,7 +621,7 @@ function form(title,fields,onSubmit){
  const fm=root.querySelector("form");
  fm.querySelector("[data-close]").onclick=closeModal;
  fm.onsubmit=e=>{e.preventDefault();const out={};
-  fields.forEach(f=>{if(f.type==="checks")out[f.k]=[...fm.querySelectorAll(`input[name="${f.k}"]:checked`)].map(i=>i.value);
+  fields.forEach(f=>{if(f.type==="note")return;if(f.type==="checks")out[f.k]=[...fm.querySelectorAll(`input[name="${f.k}"]:checked`)].map(i=>i.value);
    else if(f.type==="checkbox")out[f.k]=fm.querySelector(`input[name="${f.k}"]`).checked;
    else out[f.k]=fm.querySelector(`[name="${f.k}"]`).value.trim()});
   const err=onSubmit(out);if(err){fm.querySelector("#ferr").textContent=err;return}closeModal();commit()};
