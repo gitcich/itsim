@@ -171,6 +171,9 @@ The assistant uses the claude.ai artifact runtime's `sample` capability (`claude
 - **GitHub Pages:** served from the `main` branch root (`index.html` landing page, `.nojekyll` so files are served as-is). Everything works there except the AI assistant.
 - **claude.ai artifacts:** the RMM Lab artifact has the `sample` capability that powers the AI assistant; the IT Lab artifact has `downloads` for diagram exports. On GitHub Pages, exports use a normal browser download.
 
+## Analytics
+Page views on the GitHub Pages site are counted with [GoatCounter](https://www.goatcounter.com/), a privacy-friendly service with no cookies (dashboard: https://itlab.goatcounter.com). The landing page uses the standard snippet. The simulators load the same script only when served from `*.github.io`, so the claude.ai artifact copies, which block outside scripts, don't try.
+
 ## License
 MIT, see [LICENSE](LICENSE). You're free to use, adapt and share these simulators; please keep the copyright notice.
 
