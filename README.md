@@ -63,6 +63,14 @@ Build and operate a company's IT environment in either a **VMware vSphere-style*
 - Backup jobs to local, **immutable**, or **offsite/cloud** repositories with RPO choices, plus **restore tests**
 - **Security posture score** (12 checks) on the dashboard, showing gaps at a glance
 
+### Projected monthly cost
+- A running **estimated monthly cost** in the header of every page (click it for the breakdown)
+- **Per-device estimates** on hosts, VMs, storage, the firewall, core switch and VPN sites, in the tables, the network diagram and the inventory CSV; hover any figure for its line items
+- **Dashboard cost card**: monthly and annual totals, spend by category, the biggest cost drivers, and shared costs such as Entra ID P1 for MFA, PAM seats, Sentinel firewall logs and the VMware 72-core order minimum
+- Built from **2026 market research**: VMware vSphere Foundation per core, Windows Server Datacenter, SQL Server and RHEL licensing, Dell R760-class server pricing, all-flash and NAS storage per TB, colocation power per kW, FortiGate firewalls, Catalyst-class switches, Defender for Servers, Sentinel, Entra ID, Veeam, Backblaze B2 and PAM. Every rate links to its source
+- Realistic licensing rules: 16-core-per-CPU minimums, 4-core SQL minimum per VM, Windows Datacenter covering Hyper-V or Windows VMs on a host, and Defender for Servers P2's free 500 MB/day of log ingestion
+- **Edit assumptions** to plug in your own quotes (saved in your browser, with reset to market defaults)
+
 ### Network Diagram
 - A live diagram generated from your lab: internet uplink, edge firewall, switches, VLANs/subnets, clusters, hosts, VMs, storage links and remote sites over VPN (unconnected sites are flagged)
 - **Device IDs on everything** (`FW-001`, `SW-…`, `CL-…`, `HST-…`, `VM-…`, `STG-…`, `VPN-…`) and simulator-assigned IP addresses (gateway .1, hosts from .2 on the Management VLAN, VMs from .10, storage from .240 on a Storage VLAN)
@@ -189,3 +197,4 @@ MIT, see [LICENSE](LICENSE). You're free to use, adapt and share these simulator
 | `itlab-v2` | Learning Library linked to natted.cloud/learn guides |
 | `itlab-v3` | Network diagram with device IDs, inventory and SVG/PNG/CSV export |
 | `itlab-v4` | Resize VMs (vCPU, memory, disk) with hot add rules |
+| `itlab-v5` | Projected monthly cost from 2026 market pricing |

@@ -39,7 +39,7 @@ function boot(stub){return new JSDOM(html,{url:'https://lab.test/',runScripts:'d
  ok(!!d.querySelector('[data-act=dgmSave][data-v=svg]'),'download buttons shown when capability present');
  C('[data-act=dgmSave][data-v=svg]');await wait(30);C('[data-act=dgmSave][data-v=csv]');await wait(30);
  ok(saved[0]&&saved[0].filename==='corp.local-network-diagram.svg'.replace('corp.local',w.eval('S.ad.domain')||'itlab')&&saved[0].data.startsWith('<svg'),'SVG saved through capability');
- ok(saved[1]&&saved[1].filename.endsWith('-network-inventory.csv')&&saved[1].data.split('\n')[0]==='ID,Name,Type,Parent / location,Network,IP address,Status','CSV saved with header');
+ ok(saved[1]&&saved[1].filename.endsWith('-network-inventory.csv')&&saved[1].data.split('\n')[0]==='ID,Name,Type,Parent / location,Network,IP address,Status,Est. $/mo','CSV saved with header');
  ok(/<svg xmlns="http:\/\/www.w3.org\/2000\/svg"/.test(saved[0].data)&&/fill="#0f1419"/.test(saved[0].data),'exported SVG is standalone with its own background');
  ok(errs.length===0,'no page errors '+errs.join('; '));
  // claude.ai view without the capability: download buttons hidden, copy still offered

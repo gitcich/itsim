@@ -109,12 +109,16 @@ th{color:var(--mute);font-weight:500;font-size:12px}
 .libcard h3{font-size:15px}
 @keyframes flashring{0%{box-shadow:0 0 0 0 var(--acc)}30%{box-shadow:0 0 0 4px var(--acc)}100%{box-shadow:0 0 0 0 transparent}}
 .flash{animation:flashring 1.8s ease-out 2}
+#costPill{font:600 13px ui-monospace,Consolas,monospace;background:#132a1c;border:1px solid #2e6b41;color:#7ee28f;border-radius:7px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+#costPill:hover{border-color:var(--ok)}
+#costPill:empty{display:none}
 </style>
 </head>
 <body>
 <header>
   <div class="brand"><div class="logo">IT</div><h1>IT Lab Simulator</h1></div>
   <span class="tip-ic" data-tip="console">?</span>
+  <span class="costpill" id="costPill" data-act="goto" data-v="dash|dash-cost" data-tip="cost"></span>
   <div class="seg" id="platSeg">
     <button data-act="plat" data-v="vmware">VMware vSphere</button>
     <button data-act="plat" data-v="microsoft">Microsoft Hyper-V</button>
@@ -191,6 +195,7 @@ rpo:{t:"RPO / RTO",d:"Recovery Point Objective = how much data you can afford to
 scenario:{t:"Build scenarios",d:"Guided challenges with objectives checked live against your lab. Each mirrors a real IT project.",h:"Start a scenario; the checklist updates as you build. Hints point to the right page.",a:"Real labs: Microsoft Learn sandboxes, VMware Hands-on Labs, a home lab on Proxmox or Hyper-V."},
 library:{t:"Learning Library",d:"50 networking guides from natted.cloud/learn, each with a short summary and links to the simulator pages where you can practice the topic.",h:"Open Learning Library in the menu, search or filter by category, then use \"Try it in the simulator\" to jump to the right card. On any page, tap a 📚 button or pin a ? tip to see related guides.",a:"Other free learning: Microsoft Learn, VMware Hands-on Labs, Cisco Networking Academy, Professor Messer (CompTIA Network+), Practical Networking."},
 diagram:{t:"Network diagram",d:"A live drawing of your lab: internet uplink, edge firewall, switches, VLANs and subnets, clusters, hosts, VMs, storage and remote sites, with an ID on every device and simulator-assigned IP addresses.",h:"Open Network Diagram in the menu. Toggle VMs, IPs and storage links, zoom, and click any device to jump to it. Export as SVG or PNG for documentation, or the inventory as CSV.",a:"Real-world diagramming and discovery: Microsoft Visio, draw.io (diagrams.net), Lucidchart, NetBox (source of truth + topology), SolarWinds/Auvik network mapping, and RMM network discovery tools."},
+cost:{t:"Projected monthly cost",d:"An estimate of what this environment would cost to run each month: server hardware (spread over 5 years), data center power and space, VMware and Microsoft licensing, storage, network gear, security and identity subscriptions, and backup.",h:"The header shows the running total on every page; the Dashboard breaks it down by category and lists the biggest drivers. Hover an Est./mo cell to see each line item. Use Edit assumptions to plug in your own quotes. Each default rate links to the market source it came from.",a:"Real-world costing: vendor quotes from CDW/SHI, Broadcom and Microsoft licensing advisors, VMware/Azure TCO calculators, Azure Migrate business cases, and FinOps tools for cloud."},
 posture:{t:"Security posture score",d:"A rough measure of how many core defensive controls are in place across identity, endpoints, network and backups.",h:"Enable controls on the Security page and build the supporting pieces they require.",a:"Microsoft Secure Score, CIS Controls self-assessment, cyber-insurance questionnaires."}
 };
 
@@ -243,7 +248,7 @@ function critCovered(){const c=S.vms.filter(v=>CRIT_ROLES.includes(v.role));retu
 const A={
  plat(v){S.platform=v;log(`Console switched to ${v==="vmware"?"VMware vSphere":"Microsoft Hyper-V"} style`)},
  tab(v){S.tab=v},
- reset(){confirmBox("Reset the entire lab? Everything you've built will be cleared.",()=>{const p=S.platform;S=fresh();S.platform=p;log("Lab reset","warn");commit()})},
+ reset(){confirmBox("Reset the entire lab? Everything you've built will be cleared.",()=>{const p=S.platform,rt=S.rates;S=fresh();S.platform=p;S.rates=rt;log("Lab reset","warn");commit()})},
  sample(){confirmBox("Replace the current lab with a sample two-host environment?",()=>{buildSample();commit()})},
  logtoggle(){document.getElementById("log").classList.toggle("min")},
  addHost(){const n=S.hosts.length+1;form("Add physical host",[
@@ -433,7 +438,7 @@ function findTarget(v,src,live){const c=byId(S.clusters,src.clusterId);if(!c)ret
  return S.hosts.filter(h=>h.id!==src.id&&h.clusterId===c.id&&h.status==="online"&&hostSees(h,v.storageId)&&isShared(byId(S.storage,v.storageId)))
   .sort((a,b)=>hostUse(a).ram-hostUse(b).ram).find(h=>fits(h,v))||null}
 
-function buildSample(){const p=S.platform;S=fresh();S.platform=p;const hyp=p;
+function buildSample(){const p=S.platform,rt=S.rates;S=fresh();S.platform=p;S.rates=rt;const hyp=p;
  const pre=p==="vmware"?"esx":"hv";
  const h1={id:uid("h"),name:pre+"01.corp.local",vendor:"Dell PowerEdge R760",hyp,cpu:32,ram:256,clusterId:null,status:"online",patched:false};
  const h2={id:uid("h"),name:pre+"02.corp.local",vendor:"Dell PowerEdge R760",hyp,cpu:32,ram:256,clusterId:null,status:"online",patched:false};
@@ -496,13 +501,14 @@ function scnState(){if(!S.scenario)return null;const s=SCN.find(x=>x.id===S.scen
 /* ===================== RENDER ===================== */
 const TABS=[["dash","Dashboard"],["dc","Datacenter"],["virt","Virtualization"],["net","Network"],["diagram","Network Diagram"],["id","Identity"],["sec","Security & Backup"],["scn","Scenarios"],["learn","Learning Library"]];
 function render(){
- document.body.classList.toggle("ms",S.platform==="microsoft");
+ CM=null;document.body.classList.toggle("ms",S.platform==="microsoft");
  document.querySelectorAll("#platSeg button").forEach(b=>b.classList.toggle("on",b.dataset.v===S.platform));
  document.getElementById("nav").innerHTML=TABS.map(([k,l])=>`<button data-act="tab" data-v="${k}" class="${S.tab===k?"on":""}">${l}${k==="scn"&&S.scenario?' <span class="pill acc">live</span>':""}</button>`).join("");
  const V={dash:vDash,dc:vDC,virt:vVirt,net:vNet,id:vId,sec:vSec,scn:vScn,learn:vLearn,diagram:vDiagram}[S.tab]||vDash;
  document.getElementById("main").innerHTML=`<div class="banner">Training simulation — no real systems are touched. Console: <b>${T("console")}</b> · Management: <b>${T("mgr")}</b> ${tip("mgr")}</div>`+scnBar()+V();
  document.getElementById("logbd").innerHTML=S.log.map(l=>`<div class="lg-${l.lvl}">[${l.t}] ${esc(l.msg)}</div>`).join("")||'<div class="lg-info">No events yet.</div>';
  document.getElementById("logcount").textContent=S.log.length+" events ▾";
+ {const t=cm().total;document.getElementById("costPill").textContent=t?`Est. ${fmt$(t)}/mo`:""}
  postRender();
 }
 function scnBar(){const st=scnState();if(!st)return"";
@@ -515,9 +521,10 @@ function statusPill(s){return`<span class="pill ${s==="online"||s==="on"?"ok":s=
 function vDash(){const p=posture();const on=S.vms.filter(v=>v.power==="on").length;
  const unclustered=S.hosts.filter(h=>!h.clusterId);
  return`<h2>Dashboard</h2><p class="sub">Your company's IT estate at a glance.</p>
- <div class="grid g4" style="margin-bottom:12px">${stat(S.hosts.length,"Physical hosts","host")}${stat(`${on}/${S.vms.length}`,"VMs running","vm")}${stat(S.vlans.length,"VLANs","vlan")}${stat(S.ad.users.length,"AD users","user")}${stat(p.score+"%","Security posture","posture")}</div>
+ <div class="grid g4" style="margin-bottom:12px">${stat(S.hosts.length,"Physical hosts","host")}${stat(`${on}/${S.vms.length}`,"VMs running","vm")}${stat(S.vlans.length,"VLANs","vlan")}${stat(S.ad.users.length,"AD users","user")}${stat(p.score+"%","Security posture","posture")}${stat(cm().total?fmt$(cm().total):"$0","Est. monthly cost","cost")}</div>
  <div class="grid g2">
  <div class="card"><h3>Topology ${tip("cluster")} <button class="sm" data-act="tab" data-v="diagram" style="margin-left:auto">Network diagram →</button></h3>${S.hosts.length?`<div class="topo">${S.clusters.map(c=>`<div class="clu"><div class="t">${esc(c.name)} ${c.ha?'<span class="pill ok">HA</span>':""}${c.drs?'<span class="pill acc">LB</span>':""}</div>${S.hosts.filter(h=>h.clusterId===c.id).map(hostBox).join("")||'<div class="empty">No members</div>'}</div>`).join("")}${unclustered.length?`<div class="clu" style="border-color:var(--line)"><div class="t" style="color:var(--mute)">Standalone hosts</div>${unclustered.map(hostBox).join("")}</div>`:""}</div>`:'<div class="empty">No hosts yet. Go to Datacenter or click "Load sample environment".</div>'}</div>
+ ${vCost()}
  <div class="card" data-anchor="dash-posture"><h3>Security posture ${tip("posture")} ${libBtn("posture")}</h3><div class="score">${p.score}%</div>${bar(p.score)}<table style="margin-top:10px">${p.checks.map(c=>`<tr><td>${c[0]}</td><td>${c[1]?'<span class="pill ok">in place</span>':'<span class="pill bad">gap</span>'}</td></tr>`).join("")}</table></div>
  </div>`}
 function hostBox(h){const u=hostUse(h);return`<div class="hostbox ${h.status}"><div class="row" style="justify-content:space-between"><b style="font-size:12px">${esc(h.name)}</b>${statusPill(h.status)}</div>
@@ -526,9 +533,9 @@ function hostBox(h){const u=hostUse(h);return`<div class="hostbox ${h.status}"><
 
 function vDC(){return`<h2>Datacenter ${tip("host")}</h2><p class="sub">Physical layer: rack servers, clusters and storage, managed through ${T("mgr")}.</p>
  <div class="card" data-anchor="dc-hosts" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><h3>Hosts ${tip("hypervisor")} ${libBtn("host")}</h3><button class="pri" data-act="addHost">+ Add host</button></div>
- ${S.hosts.length?`<div class="tw"><table><tr><th>Host</th><th>Hypervisor</th><th>Cluster</th><th>CPU (vCPU alloc) ${tip("overcommit")}</th><th>RAM</th><th>Status</th><th>Patched</th><th>Actions</th></tr>
+ ${S.hosts.length?`<div class="tw"><table><tr><th>Host</th><th>Hypervisor</th><th>Cluster</th><th>CPU (vCPU alloc) ${tip("overcommit")}</th><th>RAM</th><th>Status</th><th>Patched</th><th>Est./mo ${tip("cost")}</th><th>Actions</th></tr>
  ${S.hosts.map(h=>{const u=hostUse(h),c=byId(S.clusters,h.clusterId);return`<tr><td><b>${esc(h.name)}</b><div style="font-size:11px;color:var(--mute)">${esc(h.vendor)}</div></td><td>${HVNAME[h.hyp]}</td><td>${c?esc(c.name):"—"}</td>
- <td>${u.vcpu}/${h.cpu*4}${bar(u.vcpu/(h.cpu*4)*100)}</td><td>${u.ram}/${h.ram} GB${bar(u.ram/h.ram*100)}</td><td>${statusPill(h.status)}</td><td>${h.patched?'<span class="pill ok">yes</span>':'<span class="pill warn">no</span>'}</td>
+ <td>${u.vcpu}/${h.cpu*4}${bar(u.vcpu/(h.cpu*4)*100)}</td><td>${u.ram}/${h.ram} GB${bar(u.ram/h.ram*100)}</td><td>${statusPill(h.status)}</td><td>${h.patched?'<span class="pill ok">yes</span>':'<span class="pill warn">no</span>'}</td>${costCell(cm(),h.id)}
  <td><div class="row"><button class="sm" data-act="hostMaint" data-v="${h.id}" data-tip="maint">${h.status==="maintenance"?"Exit maint.":T("maint")}</button><button class="sm" data-act="patchHost" data-v="${h.id}" data-tip="patch">Patch</button>
  <button class="sm dan" data-act="failHost" data-v="${h.id}" data-tip="failure">${h.status==="failed"?"Repair":"Simulate failure"}</button><button class="sm" data-act="delHost" data-v="${h.id}">✕</button></div></td></tr>`}).join("")}</table></div>`:'<div class="empty">No hosts. Add your first server.</div>'}</div>
  <div class="grid g2">
@@ -539,14 +546,14 @@ function vDC(){return`<h2>Datacenter ${tip("host")}</h2><p class="sub">Physical 
  <button class="sm" data-act="clusterHosts" data-v="${c.id}">Members</button><button class="sm" data-act="delCluster" data-v="${c.id}">✕</button></div></div>`).join("")||'<div class="empty">No clusters.</div>'}</div>
  <div class="card" data-anchor="dc-storage"><div class="row" style="justify-content:space-between"><h3>Storage ${tip("datastore")} ${libBtn("san")}</h3><button data-act="addStorage">+ Add storage</button></div>
  <div class="row" style="margin-bottom:6px;font-size:12px;color:var(--mute)">Types: SAN ${tip("san")} NAS ${tip("nas")} vSAN ${tip("vsan")} S2D ${tip("s2d")} Local ${tip("local")}</div>
- ${S.storage.length?`<table><tr><th>Name</th><th>Type</th><th>Capacity</th><th>Hosts</th><th></th></tr>${S.storage.map(s=>{const used=S.vms.filter(v=>v.storageId===s.id).reduce((a,v)=>a+v.disk,0)/1000;
- return`<tr><td>${esc(s.name)}</td><td><span data-tip="${s.type}">${STYPES[s.type]}</span></td><td>${used.toFixed(1)}/${s.cap} TB${bar(used/s.cap*100)}</td><td>${s.hostIds.length}</td><td><button class="sm" data-act="delStorage" data-v="${s.id}">✕</button></td></tr>`}).join("")}</table>`:'<div class="empty">No storage.</div>'}</div></div>`}
+ ${S.storage.length?`<table><tr><th>Name</th><th>Type</th><th>Capacity</th><th>Hosts</th><th>Est./mo</th><th></th></tr>${S.storage.map(s=>{const used=S.vms.filter(v=>v.storageId===s.id).reduce((a,v)=>a+v.disk,0)/1000;
+ return`<tr><td>${esc(s.name)}</td><td><span data-tip="${s.type}">${STYPES[s.type]}</span></td><td>${used.toFixed(1)}/${s.cap} TB${bar(used/s.cap*100)}</td><td>${s.hostIds.length}</td>${costCell(cm(),s.id)}<td><button class="sm" data-act="delStorage" data-v="${s.id}">✕</button></td></tr>`}).join("")}</table>`:'<div class="empty">No storage.</div>'}</div></div>`}
 
 function vVirt(){return`<h2>Virtualization — ${T("console")} ${tip("vm")}</h2><p class="sub">Provision and operate virtual machines. ${T("snap")}s ${tip("snap")} · ${T("mig")} ${tip("mig")}</p>
  <div class="card" data-anchor="virt-vms"><div class="row" style="justify-content:space-between"><h3>Virtual machines ${libBtn("vm")}</h3><button class="pri" data-act="newVM">+ New VM</button></div>
- ${S.vms.length?`<div class="tw"><table><tr><th>VM</th><th>Role ${tip("role")}</th><th>Size</th><th>Host</th><th>${T("store")}</th><th>Network</th><th>State</th><th>${T("snap")}s</th><th>Actions</th></tr>
+ ${S.vms.length?`<div class="tw"><table><tr><th>VM</th><th>Role ${tip("role")}</th><th>Size</th><th>Host</th><th>${T("store")}</th><th>Network</th><th>State</th><th>${T("snap")}s</th><th>Est./mo ${tip("cost")}</th><th>Actions</th></tr>
  ${S.vms.map(v=>{const h=byId(S.hosts,v.hostId),st=byId(S.storage,v.storageId),n=byId(S.vlans,v.vlanId);return`<tr><td><b>${esc(v.name)}</b><div style="font-size:11px;color:var(--mute)">${esc(v.os)}</div></td><td>${esc(v.role)}</td><td>${v.vcpu} vCPU · ${v.ram} GB · ${v.disk} GB${v.hotAdd?` <span class="pill acc" data-tip="hotadd">hot add</span>`:""}</td>
- <td>${h?esc(h.name):"?"}</td><td>${st?esc(st.name):"?"}</td><td>${n?"VLAN "+n.vlan:"—"}</td><td>${statusPill(v.power)} ${backedUp(v)?'<span class="pill acc">backed up</span>':""}</td><td>${v.snaps.length}</td>
+ <td>${h?esc(h.name):"?"}</td><td>${st?esc(st.name):"?"}</td><td>${n?"VLAN "+n.vlan:"—"}</td><td>${statusPill(v.power)} ${backedUp(v)?'<span class="pill acc">backed up</span>':""}</td><td>${v.snaps.length}</td>${costCell(cm(),v.id)}
  <td><div class="row"><button class="sm" data-act="power" data-v="${v.id}">${v.power==="on"?"Shut down":"Power on"}</button><button class="sm" data-act="resize" data-v="${v.id}" data-tip="resize">Resize</button><button class="sm" data-act="migrate" data-v="${v.id}" data-tip="mig">Migrate</button>
  <button class="sm" data-act="snap" data-v="${v.id}" data-tip="snap">${T("snap")}</button>${v.snaps.length?`<button class="sm" data-act="revert" data-v="${v.id}">Revert</button><button class="sm" data-act="delSnaps" data-v="${v.id}">Consolidate</button>`:""}<button class="sm" data-act="delVM" data-v="${v.id}">✕</button></div></td></tr>`}).join("")}</table></div>`:'<div class="empty">No VMs. You need at least one host and one storage location first.</div>'}</div>`}
 
@@ -555,14 +562,14 @@ function vNet(){return`<h2>Network ${tip("vlan")}</h2><p class="sub">Segmentatio
  ${S.vlans.length?`<table><tr><th>ID</th><th>Name</th><th>Subnet</th><th>Site</th><th>VMs</th><th></th></tr>${S.vlans.map(v=>`<tr><td>${v.vlan}</td><td>${esc(v.name)}</td><td>${esc(v.subnet)}</td><td>${esc(v.site)}</td><td>${S.vms.filter(x=>x.vlanId===v.id).length}</td><td><button class="sm" data-act="delVlan" data-v="${v.id}">✕</button></td></tr>`).join("")}</table>`:'<div class="empty">No VLANs.</div>'}</div>
  <div class="card" data-anchor="net-switch"><div class="row" style="justify-content:space-between"><h3>Virtual switches ${tip("vswitch")} ${libBtn("vswitch")}</h3><button data-act="addSwitch">+ Add ${T("vsw")}</button></div>
  ${S.switches.map(s=>`<div class="ctl"><div><div class="nm">${esc(s.name)}</div><div class="ds">${esc(s.type)} · ${s.uplinks} uplink(s) · ${s.vlanIds.length} VLAN(s)</div></div><button class="sm" data-act="delSwitch" data-v="${s.id}">✕</button></div>`).join("")||'<div class="empty">No virtual switches.</div>'}</div>
- <div class="card" data-anchor="net-fw"><div class="row" style="justify-content:space-between"><h3>Firewall rules ${tip("firewall")} ${libBtn("firewall")}</h3><div class="row"><button data-act="addFw">+ Rule</button><button data-act="addDefaultDeny" data-tip="defaultdeny">+ Default deny</button></div></div>
+ <div class="card" data-anchor="net-fw"><div class="row" style="justify-content:space-between"><h3>Firewall rules ${tip("firewall")} ${libBtn("firewall")} ${S.hosts.length?`<span class="pill" title="${esc(costTitle(costOf(cm(),"fw")))}">FW-001 ≈ ${fmt$(costOf(cm(),"fw").total)}/mo</span>`:""}</h3><div class="row"><button data-act="addFw">+ Rule</button><button data-act="addDefaultDeny" data-tip="defaultdeny">+ Default deny</button></div></div>
  <p class="ds" style="font-size:12px;color:var(--mute);margin:0 0 6px">Evaluated top to bottom; first match wins.</p>
  ${S.fw.length?`<div class="tw"><table><tr><th>#</th><th>Name</th><th>Src → Dst</th><th>Port</th><th>Action</th><th></th></tr>${S.fw.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.src)} → ${esc(r.dst)}</td><td>${esc(r.port)}</td><td><span class="pill ${r.action==="Allow"?"ok":"bad"}">${r.action}</span></td><td><div class="row"><button class="sm" data-act="fwUp" data-v="${r.id}">↑</button><button class="sm" data-act="fwDown" data-v="${r.id}">↓</button><button class="sm" data-act="delFw" data-v="${r.id}">✕</button></div></td></tr>`).join("")}</table></div>`:'<div class="empty">No rules.</div>'}</div>
  <div class="card" data-anchor="net-dhcp"><div class="row" style="justify-content:space-between"><h3>DHCP scopes ${tip("dhcp")} ${libBtn("dhcp")}</h3><button data-act="addDhcp">+ Scope</button></div>
  ${S.dhcp.map(d=>{const v=byId(S.vlans,d.vlanId);return`<div class="ctl"><div><div class="nm">${v?esc(v.name)+" ("+esc(v.subnet)+")":"?"}</div><div class="ds">Range .${esc(d.range)} · ${d.lease}-day lease</div></div><button class="sm" data-act="delDhcp" data-v="${d.id}">✕</button></div>`}).join("")||'<div class="empty">No scopes.</div>'}</div>
  <div class="card" data-anchor="net-dns"><div class="row" style="justify-content:space-between"><h3>DNS ${tip("dns")} ${libBtn("dns")} ${S.ad.domain?`<span class="pill">${esc(S.ad.domain)}</span>`:""}</h3><button data-act="addDns">+ Record</button></div>
  ${S.dns.length?`<table><tr><th>Name</th><th>Type</th><th>Value</th><th></th></tr>${S.dns.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.type}</td><td>${esc(r.value)}</td><td><button class="sm" data-act="delDns" data-v="${r.id}">✕</button></td></tr>`).join("")}</table>`:'<div class="empty">No DNS zone yet — it is created with your AD domain.</div>'}</div>
- <div class="card" data-anchor="net-vpn"><div class="row" style="justify-content:space-between"><h3>Site-to-site VPN ${tip("vpn")} ${libBtn("vpn")}</h3><button data-act="addVpn">+ Tunnel</button></div>
+ <div class="card" data-anchor="net-vpn"><div class="row" style="justify-content:space-between"><h3>Site-to-site VPN ${tip("vpn")} ${libBtn("vpn")} ${S.vpn.length?`<span class="pill">≈ ${fmt$(S.vpn.reduce((a,t)=>a+costOf(cm(),t.id).total,0))}/mo</span>`:""}</h3><button data-act="addVpn">+ Tunnel</button></div>
  ${S.vpn.map(t=>`<div class="ctl"><div><div class="nm">${esc(t.name)} <span class="pill ok">up</span></div><div class="ds">→ ${esc(t.peer)} · ${esc(t.type)} · ${esc(t.auth)}</div></div><button class="sm" data-act="delVpn" data-v="${t.id}">✕</button></div>`).join("")||'<div class="empty">No tunnels.</div>'}</div>
  </div>`}
 
@@ -749,7 +756,7 @@ function postRender(){if(!S.flash)return;const sel=S.flash;S.flash=null;setTimeo
 const DGM_PAL=["#1d9bd1","#3fb950","#d29922","#a371f7","#f778ba","#2fb39a","#ff7b72","#79c0ff"];
 const idNum=id=>parseInt(String(id).replace(/\D/g,""),10)||0;
 const did=(p,id)=>`${p}-${String(idNum(id)).padStart(3,"0")}`;
-const dgmOpts=()=>Object.assign({vms:true,ips:true,storage:true,zoom:1},S.dgm||{});
+const dgmOpts=()=>Object.assign({vms:true,ips:true,storage:true,costs:true,zoom:1},S.dgm||{});
 const vlanColor=id=>{const i=S.vlans.findIndex(v=>v.id===id);return i<0?"#6e7681":DGM_PAL[i%DGM_PAL.length]};
 const subnetBase=v=>v.subnet.split("/")[0].split(".").slice(0,3).join(".");
 function dgmIPs(){const ip={};const byNum=(a,b)=>idNum(a.id)-idNum(b.id);
@@ -762,7 +769,7 @@ const swId=s=>s.implied?"SW-CORE":did("SW",s.id);
 function dgmSites(){const peers=S.vpn.map(t=>({t,name:t.peer,vlans:S.vlans.filter(v=>v.site&&v.site!=="HQ"&&(t.peer.toLowerCase().includes(v.site.toLowerCase())||v.site.toLowerCase().includes(t.peer.toLowerCase())))}));
  const matched=new Set(peers.flatMap(p=>p.vlans.map(v=>v.id)));const orphan=[...new Set(S.vlans.filter(v=>v.site&&v.site!=="HQ"&&!matched.has(v.id)).map(v=>v.site))].map(n=>({t:null,name:n,vlans:S.vlans.filter(v=>v.site===n)}));
  return peers.concat(orphan)}
-function dgmBuild(){const o=dgmOpts(),ip=dgmIPs(),E=esc;const L=[],N=[];
+function dgmBuild(){const o=dgmOpts(),ip=dgmIPs(),E=esc;const L=[],N=[];const cmod=costModel(),c$=id=>{const t=costOf(cmod,id).total;return o.costs&&t?fmt$(t)+"/mo":""};
  const groups=[...S.clusters.map(c=>({c,hosts:S.hosts.filter(h=>h.clusterId===c.id)})).filter(g=>g.hosts.length)];if(S.hosts.some(h=>!h.clusterId))groups.push({c:null,hosts:S.hosts.filter(h=>!h.clusterId)});
  const HW=230,HG=18,GP=14,vmsOn=h=>S.vms.filter(v=>v.hostId===h.id),hostH=h=>66+(o.vms?vmsOn(h).length*19:0);
  let x=40;const hp={};groups.forEach(g=>{g.x=x;x+=GP;g.hosts.forEach(h=>{hp[h.id]={x,w:HW,h:hostH(h)};x+=HW+HG});x+=GP-HG;g.w=x-g.x;x+=26});
@@ -775,11 +782,11 @@ function dgmBuild(){const o=dgmOpts(),ip=dgmIPs(),E=esc;const L=[],N=[];
  const fwY=118,swY=220,fwW=250,fwX=cx-fwW/2;const dd=S.fw.some(r=>r.action==="Deny"&&r.src==="any"&&r.dst==="any");
  L.push(`<line x1="${cx}" y1="78" x2="${cx}" y2="${fwY}" stroke="#8b98a7" stroke-width="2"/>`);
  N.push(`<g data-act="goto" data-v="net|net-fw" style="cursor:pointer"><title>Internet uplink → edge firewall</title><ellipse cx="${cx}" cy="52" rx="90" ry="27" fill="#1e2731" stroke="#8b98a7"/><text x="${cx}" y="49" text-anchor="middle" fill="#dbe3ec" font-size="13" font-weight="600">Internet</text><text x="${cx}" y="65" text-anchor="middle" fill="#8b98a7" font-size="10">ISP-001 · public uplink</text></g>`);
- N.push(`<g data-act="goto" data-v="net|net-fw" style="cursor:pointer"><title>Edge firewall: ${S.fw.length} rule(s). Click to open firewall rules.</title><rect x="${fwX}" y="${fwY}" width="${fwW}" height="58" rx="8" fill="#2a1d14" stroke="#d29922" stroke-width="1.5"/><text x="${cx}" y="${fwY+21}" text-anchor="middle" fill="#f0c86a" font-size="12" font-weight="700">FW-001 · Edge firewall / router</text><text x="${cx}" y="${fwY+38}" text-anchor="middle" fill="#dbe3ec" font-size="11">${S.fw.length} rule(s) · default deny ${dd?"✓":"✗"}${S.vpn.length?` · ${S.vpn.length} VPN`:""}</text><text x="${cx}" y="${fwY+52}" text-anchor="middle" fill="#8b98a7" font-size="10">Gateway .1 on each VLAN</text></g>`);
+ N.push(`<g data-act="goto" data-v="net|net-fw" style="cursor:pointer"><title>Edge firewall: ${S.fw.length} rule(s). Click to open firewall rules.</title><rect x="${fwX}" y="${fwY}" width="${fwW}" height="58" rx="8" fill="#2a1d14" stroke="#d29922" stroke-width="1.5"/><text x="${cx}" y="${fwY+21}" text-anchor="middle" fill="#f0c86a" font-size="12" font-weight="700">FW-001 · Edge firewall / router</text><text x="${cx}" y="${fwY+38}" text-anchor="middle" fill="#dbe3ec" font-size="11">${S.fw.length} rule(s) · default deny ${dd?"✓":"✗"}${S.vpn.length?` · ${S.vpn.length} VPN`:""}</text><text x="${cx}" y="${fwY+52}" text-anchor="middle" fill="#8b98a7" font-size="10">Gateway .1 on each VLAN${c$("fw")?" · "+c$("fw"):""}</text></g>`);
  // switches
  const sws=swList(),swSub=s=>`${s.type}${s.implied?"":` · ${s.uplinks} uplink(s)`} · ${s.vlanIds.length} VLAN(s)`,sW=Math.max(220,...sws.map(s=>Math.max(swSub(s).length*5.7,(swId(s)+" · "+s.name).length*7.4)+28)),sGap=20,sTot=sws.length*sW+(sws.length-1)*sGap;let sx=cx-sTot/2;const sPos={};
  sws.forEach(s=>{sPos[s.id]=sx+sW/2;L.push(`<line x1="${cx}" y1="${fwY+58}" x2="${sx+sW/2}" y2="${swY}" stroke="#8b98a7" stroke-width="2"/>`);
-  N.push(`<g data-act="goto" data-v="net|net-switch" style="cursor:pointer"><title>${E(s.type)}: carries ${s.vlanIds.length} VLAN(s)</title><rect x="${sx}" y="${swY}" width="${sW}" height="52" rx="8" fill="#13283a" stroke="#1d9bd1" stroke-width="1.5"/><text x="${sx+sW/2}" y="${swY+20}" text-anchor="middle" fill="#8fd0f5" font-size="12" font-weight="700">${swId(s)} · ${E(s.name)}</text><text x="${sx+sW/2}" y="${swY+37}" text-anchor="middle" fill="#8b98a7" font-size="10">${E(swSub(s))}</text></g>`);sx+=sW+sGap});
+  N.push(`<g data-act="goto" data-v="net|net-switch" style="cursor:pointer"><title>${E(s.type)}: carries ${s.vlanIds.length} VLAN(s)</title><rect x="${sx}" y="${swY}" width="${sW}" height="52" rx="8" fill="#13283a" stroke="#1d9bd1" stroke-width="1.5"/><text x="${sx+sW/2}" y="${swY+20}" text-anchor="middle" fill="#8fd0f5" font-size="12" font-weight="700">${swId(s)} · ${E(s.name)}</text><text x="${sx+sW/2}" y="${swY+37}" text-anchor="middle" fill="#8b98a7" font-size="10">${E(swSub(s))}</text>${s.implied&&c$("core")?`<text x="${sx+sW/2}" y="${swY+49}" text-anchor="middle" fill="#7ee28f" font-size="10">${c$("core")}</text>`:""}</g>`);sx+=sW+sGap});
  // VLAN legend
  if(S.vlans.length)N.push(`<text x="40" y="${vlanY-10}" fill="#8b98a7" font-size="11" letter-spacing=".5">VLANS / SUBNETS (trunked to every host)</text>`);
  pills.forEach(p=>{const c=vlanColor(p.v.id),y=vlanY+p.row*30;N.push(`<g data-act="goto" data-v="net|net-vlan" style="cursor:pointer"><title>${E(p.txt)}</title><rect x="${p.x}" y="${y}" width="${p.w}" height="22" rx="11" fill="#0f1419"/><rect x="${p.x}" y="${y}" width="${p.w}" height="22" rx="11" fill="${c}" fill-opacity=".18" stroke="${c}"/><circle cx="${p.x+12}" cy="${y+11}" r="4" fill="${c}"/><text x="${p.x+21}" y="${y+15}" fill="#dbe3ec" font-size="11">${E(p.txt)}</text></g>`)});
@@ -789,22 +796,22 @@ function dgmBuild(){const o=dgmOpts(),ip=dgmIPs(),E=esc;const L=[],N=[];
  S.hosts.forEach(h=>{const p=hp[h.id],hx=p.x+p.w/2,col=h.status==="failed"?"#f85149":h.status==="maintenance"?"#d29922":"#3fb950";
   sws.forEach(s=>L.push(`<line x1="${sPos[s.id]}" y1="${swY+52}" x2="${hx}" y2="${hostsTop}" stroke="#3a4a5c" stroke-width="1.6"/>`));
   let t=`<g data-act="goto" data-v="dc|dc-hosts" style="cursor:pointer"><title>${E(h.name)} · ${E(h.vendor)} · ${HVNAME[h.hyp]} · ${h.status}</title><rect x="${p.x}" y="${hostsTop}" width="${p.w}" height="${p.h}" rx="9" fill="#1e2731" stroke="${col}" stroke-width="1.6"/><rect x="${p.x}" y="${hostsTop}" width="5" height="${p.h}" rx="2" fill="${col}"/>
-   <text x="${p.x+14}" y="${hostsTop+19}" fill="#dbe3ec" font-size="12" font-weight="700">${did("HST",h.id)} · ${E(h.name)}</text><text x="${p.x+14}" y="${hostsTop+35}" fill="#8b98a7" font-size="10">${TERMS[h.hyp].hv} · ${h.cpu}c / ${h.ram} GB · ${h.status}</text>
+   <text x="${p.x+14}" y="${hostsTop+19}" fill="#dbe3ec" font-size="12" font-weight="700">${did("HST",h.id)} · ${E(h.name)}</text>${c$(h.id)?`<text x="${p.x+p.w-10}" y="${hostsTop+35}" text-anchor="end" fill="#7ee28f" font-size="10" font-weight="600">${c$(h.id)}</text>`:""}<text x="${p.x+14}" y="${hostsTop+35}" fill="#8b98a7" font-size="10">${TERMS[h.hyp].hv} · ${h.cpu}c / ${h.ram} GB · ${h.status}</text>
    <text x="${p.x+14}" y="${hostsTop+50}" fill="#8b98a7" font-size="10">${o.ips&&ip[h.id]?"mgmt "+ip[h.id]+" · ":""}${E(h.vendor)}</text></g>`;
   if(o.vms)vmsOn(h).forEach((v,i)=>{const y=hostsTop+66+i*19,c=v.vlanId?vlanColor(v.vlanId):"#6e7681",fc=v.power==="on"?"#dbe3ec":v.power==="down"?"#ff7b72":"#6e7681";
-   t+=`<g data-act="goto" data-v="virt|virt-vms" style="cursor:pointer"><title>${E(v.name)} · ${E(v.role)} · ${E(v.os)} · ${v.power}${v.vlanId?" · VLAN "+(byId(S.vlans,v.vlanId)||{}).vlan:" · no network"}</title><rect x="${p.x+10}" y="${y-12}" width="${p.w-20}" height="17" rx="4" fill="#111a22"/><circle cx="${p.x+19}" cy="${y-3.5}" r="4" fill="${c}"/><text x="${p.x+28}" y="${y}" fill="${fc}" font-size="10.5">${did("VM",v.id)} · ${E(v.name)}${o.ips&&ip[v.id]?" · "+ip[v.id]:""}${v.power!=="on"?" · "+v.power:""}</text></g>`});
+   t+=`<g data-act="goto" data-v="virt|virt-vms" style="cursor:pointer"><title>${E(v.name)} · ${E(v.role)} · ${E(v.os)} · ${v.power}${v.vlanId?" · VLAN "+(byId(S.vlans,v.vlanId)||{}).vlan:" · no network"}</title><rect x="${p.x+10}" y="${y-12}" width="${p.w-20}" height="17" rx="4" fill="#111a22"/><circle cx="${p.x+19}" cy="${y-3.5}" r="4" fill="${c}"/><text x="${p.x+28}" y="${y}" fill="${fc}" font-size="10.5">${did("VM",v.id)} · ${E(v.name)}${o.ips&&ip[v.id]?" · "+ip[v.id]:""}${v.power!=="on"?" · "+v.power:""}</text>${c$(v.id)?`<text x="${p.x+p.w-16}" y="${y}" text-anchor="end" fill="#7ee28f" font-size="10">${c$(v.id).replace("/mo","")}</text>`:""}</g>`});
   N.push(t)});
  // storage
  if(showSt){const stW=210,stG=20,tot=S.storage.length*stW+(S.storage.length-1)*stG;let stx=Math.max(40,cx-tot/2);
   S.storage.forEach(st=>{const scx=stx+stW/2;st.hostIds.forEach(hid=>{const p=hp[hid];if(p)L.push(`<line x1="${p.x+p.w/2}" y1="${hostsTop+p.h}" x2="${scx}" y2="${stTop}" stroke="#a371f7" stroke-width="1.3" stroke-dasharray="5 4" stroke-opacity=".8"/>`)});
    const used=S.vms.filter(v=>v.storageId===st.id).reduce((a,v)=>a+v.disk,0)/1000;
-   N.push(`<g data-act="goto" data-v="dc|dc-storage" style="cursor:pointer"><title>${E(st.name)} · ${STYPES[st.type]} · presented to ${st.hostIds.length} host(s)</title><rect x="${stx}" y="${stTop}" width="${stW}" height="56" rx="8" fill="#211a33" stroke="#a371f7" stroke-width="1.5"/><text x="${scx}" y="${stTop+20}" text-anchor="middle" fill="#d2b8ff" font-size="12" font-weight="700">${did("STG",st.id)} · ${E(st.name)}</text><text x="${scx}" y="${stTop+36}" text-anchor="middle" fill="#8b98a7" font-size="10">${STYPES[st.type]} · ${used.toFixed(1)}/${st.cap} TB · ${st.hostIds.length} host(s)</text>${o.ips&&ip[st.id]?`<text x="${scx}" y="${stTop+50}" text-anchor="middle" fill="#8b98a7" font-size="10">${ip[st.id]}</text>`:""}</g>`);stx+=stW+stG})}
+   N.push(`<g data-act="goto" data-v="dc|dc-storage" style="cursor:pointer"><title>${E(st.name)} · ${STYPES[st.type]} · presented to ${st.hostIds.length} host(s)</title><rect x="${stx}" y="${stTop}" width="${stW}" height="56" rx="8" fill="#211a33" stroke="#a371f7" stroke-width="1.5"/><text x="${scx}" y="${stTop+20}" text-anchor="middle" fill="#d2b8ff" font-size="12" font-weight="700">${did("STG",st.id)} · ${E(st.name)}</text><text x="${scx}" y="${stTop+36}" text-anchor="middle" fill="#8b98a7" font-size="10">${STYPES[st.type]} · ${used.toFixed(1)}/${st.cap} TB · ${st.hostIds.length} host(s)</text>${(o.ips&&ip[st.id])||c$(st.id)?`<text x="${scx}" y="${stTop+50}" text-anchor="middle" fill="#8b98a7" font-size="10">${[o.ips&&ip[st.id],c$(st.id)&&`<tspan fill="#7ee28f">${c$(st.id)}</tspan>`].filter(Boolean).join(" · ")}</text>`:""}</g>`);stx+=stW+stG})}
  // remote sites
  sites.forEach((s,i)=>{const sy=120+i*118,sx2=mainW+40,h=40+Math.max(1,s.vlans.length)*16+14,ok=!!s.t;
   L.push(ok?`<path d="M ${fwX+fwW} ${fwY+29} C ${fwX+fwW+120} ${fwY+29}, ${sx2-80} ${sy+24}, ${sx2} ${sy+24}" fill="none" stroke="#2fb39a" stroke-width="2" stroke-dasharray="8 5"/>`:"");
-  N.push(`<g data-act="goto" data-v="net|net-vpn" style="cursor:pointer"><title>${ok?E(s.t.name)+" · "+E(s.t.type)+" · "+E(s.t.auth):"No VPN tunnel to this site"}</title><rect x="${sx2}" y="${sy}" width="${SW}" height="${h}" rx="9" fill="#14231f" stroke="${ok?"#2fb39a":"#f85149"}" stroke-width="1.5"/><text x="${sx2+12}" y="${sy+19}" fill="${ok?"#7fe0cc":"#ffa198"}" font-size="12" font-weight="700">Site: ${E(s.name)}</text><text x="${sx2+12}" y="${sy+35}" fill="#8b98a7" font-size="10">${ok?`${did("VPN",s.t.id)} · ${E(s.t.type)} · ${s.t.status}`:"⚠ not connected (no VPN tunnel)"}</text>
+  N.push(`<g data-act="goto" data-v="net|net-vpn" style="cursor:pointer"><title>${ok?E(s.t.name)+" · "+E(s.t.type)+" · "+E(s.t.auth):"No VPN tunnel to this site"}</title><rect x="${sx2}" y="${sy}" width="${SW}" height="${h}" rx="9" fill="#14231f" stroke="${ok?"#2fb39a":"#f85149"}" stroke-width="1.5"/><text x="${sx2+12}" y="${sy+19}" fill="${ok?"#7fe0cc":"#ffa198"}" font-size="12" font-weight="700">Site: ${E(s.name)}</text><text x="${sx2+12}" y="${sy+35}" fill="#8b98a7" font-size="10">${ok?`${did("VPN",s.t.id)} · ${E(s.t.type)} · ${s.t.status}${c$(s.t.id)?" · "+c$(s.t.id):""}`:"⚠ not connected (no VPN tunnel)"}</text>
    ${s.vlans.length?s.vlans.map((v,j)=>`<circle cx="${sx2+16}" cy="${sy+50+j*16}" r="4" fill="${vlanColor(v.id)}"/><text x="${sx2+26}" y="${sy+54+j*16}" fill="#dbe3ec" font-size="10.5">VLAN ${v.vlan} · ${E(v.name)} · ${E(v.subnet)}</text>`).join(""):`<text x="${sx2+12}" y="${sy+54}" fill="#8b98a7" font-size="10">No VLANs assigned to this site yet</text>`}</g>`)});
- const title=`${S.ad.domain?E(S.ad.domain):"IT Lab"} network · ${S.hosts.length} host(s), ${S.vms.length} VM(s), ${S.vlans.length} VLAN(s)`;
+ const title=`${S.ad.domain?E(S.ad.domain):"IT Lab"} network · ${S.hosts.length} host(s), ${S.vms.length} VM(s), ${S.vlans.length} VLAN(s)${o.costs&&cmod.total?` · est. ${fmt$(cmod.total)}/mo`:""}`;
  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Segoe UI, system-ui, -apple-system, Roboto, sans-serif"><rect width="${W}" height="${H}" fill="#0f1419"/><text x="20" y="22" fill="#8b98a7" font-size="11">${title}</text><text x="${W-20}" y="22" text-anchor="end" fill="#56606b" font-size="10">Generated ${E(new Date().toLocaleString())} · IT Lab Simulator</text>${L.join("")}${N.join("")}</svg>`;
  return{svg,W,H,ip}}
 function dgmInventory(){const ip=dgmIPs(),rows=[];const vl=id=>{const v=byId(S.vlans,id);return v?`VLAN ${v.vlan} ${v.name}`:""};
@@ -817,13 +824,14 @@ function dgmInventory(){const ip=dgmIPs(),rows=[];const vl=id=>{const v=byId(S.v
  S.vms.forEach(v=>rows.push([did("VM",v.id),v.name,`VM (${v.role})`,(byId(S.hosts,v.hostId)||{}).name||"",vl(v.vlanId),ip[v.id]||"",v.power]));
  S.storage.forEach(s=>rows.push([did("STG",s.id),s.name,STYPES[s.type],`${s.hostIds.length} hosts`,ip[s.id]?"Storage VLAN":"",ip[s.id]||"",`${s.cap} TB`]));
  S.vlans.forEach(v=>rows.push([`VLAN-${v.vlan}`,v.name,"VLAN / subnet",v.site||"HQ",v.subnet,`${subnetBase(v)}.1 (GW)`,S.dhcp.some(d=>d.vlanId===v.id)?"DHCP":"static"]));
- return rows}
-const INV_HEAD=["ID","Name","Type","Parent / location","Network","IP address","Status"];
+ const m=costModel(),idMap={"FW-001":"fw","SW-CORE":"core"};S.hosts.forEach(h=>idMap[did("HST",h.id)]=h.id);S.vms.forEach(v=>idMap[did("VM",v.id)]=v.id);S.storage.forEach(x=>idMap[did("STG",x.id)]=x.id);S.vpn.forEach(t=>idMap[did("VPN",t.id)]=t.id);
+ rows.forEach(r=>{const it=idMap[r[0]]&&costOf(m,idMap[r[0]]);r.push(it&&it.total?Math.round(it.total):"")});return rows}
+const INV_HEAD=["ID","Name","Type","Parent / location","Network","IP address","Status","Est. $/mo"];
 const csvOf=rows=>[INV_HEAD,...rows].map(r=>r.map(c=>/[",\n]/.test(String(c))?`"${String(c).replace(/"/g,'""')}"`:c).join(",")).join("\n");
 function vDiagram(){const o=dgmOpts();if(!S.hosts.length&&!S.vlans.length)return`<h2 data-anchor="dgm-main">Network Diagram ${tip("diagram")}</h2><p class="sub">A live map of your lab with device IDs.</p><div class="card empty">Nothing to draw yet. Add hosts and VLANs, or click <b>Load sample environment</b>.</div>`;
  const d=dgmBuild(),inv=dgmInventory();const chk=(k,l)=>`<label class="row" style="gap:5px;font-size:13px"><input type="checkbox" style="width:auto" data-act="dgmOpt" data-v="${k}" ${o[k]?"checked":""}>${l}</label>`;
  return`<h2 data-anchor="dgm-main">Network Diagram ${tip("diagram")} ${libBtn("diagram")}</h2><p class="sub">Generated from your lab right now. Click any device to jump to where it's managed; hover for details.</p>
- <div class="card" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><div class="row">${chk("vms","VMs")}${chk("ips","IP addresses")}${chk("storage","Storage links")}</div>
+ <div class="card" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><div class="row">${chk("vms","VMs")}${chk("ips","IP addresses")}${chk("storage","Storage links")}${chk("costs","Costs")}</div>
  <div class="row"><button class="sm" data-act="dgmZoom" data-v="-1">−</button><span style="font-size:12px;min-width:42px;text-align:center">${Math.round(o.zoom*100)}%</span><button class="sm" data-act="dgmZoom" data-v="1">+</button><button class="sm" data-act="dgmZoom" data-v="0">Fit</button></div></div>
  <div class="row" style="margin-top:10px">${DL.mode!=="none"?`<button class="sm pri" data-act="dgmSave" data-v="svg" data-tip="diagram">⬇ SVG</button><button class="sm" data-act="dgmSave" data-v="png">⬇ PNG</button><button class="sm" data-act="dgmSave" data-v="csv">⬇ Inventory CSV</button>`:""}<button class="sm" data-act="dgmCopy" data-v="csv">Copy inventory</button><button class="sm" data-act="dgmCopy" data-v="svg">Copy SVG code</button></div></div>
  <div class="card" style="padding:8px;overflow:auto;max-height:75vh" id="dgmWrap"><div style="width:${Math.round(d.W*(o.zoom||1))}px">${d.svg.replace(`width="${d.W}" height="${d.H}"`,`width="100%" style="display:block"`)}</div></div>
@@ -848,6 +856,94 @@ Object.assign(A,{
   try{navigator.clipboard.writeText(t).then(done,()=>toast("Clipboard access was blocked by the browser."))}catch(e){toast("Clipboard isn't available here.")}return"__toast"}});
 LIB.forEach(g=>{if(["network-topologies","office-network","network-redundancy"].includes(g.id))g.keys.push("diagram")});
 LIB_ANCHOR.diagram=["diagram","dgm-main","Network Diagram"];
+/* ===================== COST MODEL ===================== */
+/* Market-average estimates (USD), researched Nov 2026. Hardware is amortized over the period below; subscriptions are annual list ÷ 12. */
+const RATES=[
+ {k:"srvBase",g:"Hardware",l:"Server chassis, PSUs, NICs, boot drives (2U, dual socket)",v:4000,u:"$ per host",s:"https://servermall.com/en-us/config/dell-r760-24sff/",sn:"Servermall: Dell R760 base from ~$5.6k"},
+ {k:"srvCore",g:"Hardware",l:"CPU cost per physical core",v:200,u:"$ per core",s:"https://www.bytestock.com/servers/dell/dell-rack-servers/16th-generation/dell-poweredge-r760",sn:"Bytestock R760 configs: 2×32-core / 256 GB ~$10k–$34k"},
+ {k:"srvGB",g:"Hardware",l:"Server memory (DDR5)",v:8,u:"$ per GB",s:"https://www.bytestock.com/servers/dell/dell-rack-servers/16th-generation/dell-poweredge-r760",sn:"Bytestock R760 configs"},
+ {k:"amort",g:"Hardware",l:"Hardware amortization period",v:60,u:"months",s:"",sn:"Common 5-year refresh cycle"},
+ {k:"kw",g:"Facility",l:"Colocation power, space and cooling",v:175,u:"$ per kW per month",s:"https://inflect.com/blog/colocation-pricing-what-to-expect-for-racks-cabinets-and-cages-in-2026",sn:"CBRE US average $195.94/kW; retail $120–$180/kW"},
+ {k:"kwHost",g:"Facility",l:"Average power draw per host",v:0.5,u:"kW",s:"",sn:"Estimate for a 2U dual-socket server"},
+ {k:"kwArray",g:"Facility",l:"Average power draw per storage array",v:0.8,u:"kW",s:"",sn:"Estimate for a dual-controller array"},
+ {k:"kwNet",g:"Facility",l:"Average power draw, core switch",v:0.2,u:"kW",s:"",sn:"Estimate"},
+ {k:"vvf",g:"Virtualization licensing",l:"VMware vSphere Foundation (16 cores/CPU min, 2 CPUs per host)",v:135,u:"$ per core per year",s:"https://atonementlicensing.com/blog/vmware-vsphere-foundation-pricing/",sn:"Atonement Licensing: VVF list $135/core/yr (2026)"},
+ {k:"vmwMin",g:"Virtualization licensing",l:"VMware minimum cores per order",v:72,u:"cores",s:"https://atonementlicensing.com/blog/vmware-subscription-pricing-2026/",sn:"Atonement Licensing: 72-core minimum order"},
+ {k:"wsdc",g:"OS & app licensing",l:"Windows Server 2025 Datacenter, 16-core license (perpetual, amortized)",v:6100,u:"$ per 16 cores",s:"https://www.cdw.com/product/microsoft-windows-server-2025-datacenter-license-and-media-16-cores/8191397",sn:"CDW: $5,609–$6,619"},
+ {k:"sql",g:"OS & app licensing",l:"SQL Server 2025 Standard subscription (4-core min per VM)",v:1418,u:"$ per 2-core pack per year",s:"https://licenseware.io/microsoft-sql-server-2025-licensing-guide/",sn:"Microsoft list via Licenseware"},
+ {k:"rhel",g:"OS & app licensing",l:"Red Hat Enterprise Linux Server, Standard",v:1367,u:"$ per VM per year",s:"https://www.cdw.com/product/red-hat-enterprise-linux-server-standard-subscription/3467364",sn:"CDW: $1,367 (2 sockets, 1 guest)"},
+ {k:"sanTB",g:"Storage",l:"All-flash SAN, usable capacity incl. controllers",v:1500,u:"$ per TB",s:"https://pcserverandparts.com/news/enterprise-ssd-prices-2026-server-storage-buying-guide/",sn:"Enterprise NVMe $300–$1,172/TB raw in 2026, plus RAID and controllers"},
+ {k:"nasTB",g:"Storage",l:"NAS / hybrid array, usable capacity",v:300,u:"$ per TB",s:"https://datacenterdisk.com/reports/datacenter-storage-tco-2026",sn:"DatacenterDisk 2026 storage TCO"},
+ {k:"hciTB",g:"Storage",l:"vSAN / S2D capacity drives (mirrored)",v:1200,u:"$ per usable TB",s:"https://pcserverandparts.com/news/enterprise-ssd-prices-2026-server-storage-buying-guide/",sn:"Server NVMe ×2 for mirroring"},
+ {k:"localTB",g:"Storage",l:"Local server SSD",v:600,u:"$ per TB",s:"https://pcserverandparts.com/news/enterprise-ssd-prices-2026-server-storage-buying-guide/",sn:"Enterprise SSD pricing 2026"},
+ {k:"fwHw",g:"Network",l:"Edge firewall hardware (FortiGate 100F class)",v:1100,u:"$ per appliance",s:"https://datacenter360.ca/product-category/network-security/firewall/page/521",sn:"100F + 1-yr UTP bundle ~$3,179"},
+ {k:"fwSub",g:"Network",l:"Edge firewall UTP security subscription",v:2100,u:"$ per year",s:"https://datacenter360.ca/?post_type=product",sn:"100F UTP renewal ~CA$2,870"},
+ {k:"brHw",g:"Network",l:"Branch firewall hardware (FortiGate 60F class), per VPN site",v:400,u:"$ per site",s:"https://corporatearmor.com/?p=580159",sn:"60F + 1-yr UTP ~$827"},
+ {k:"brSub",g:"Network",l:"Branch firewall UTP subscription",v:615,u:"$ per site per year",s:"https://corporatearmor.com/?p=580159",sn:"60F 1-yr UTP ~$615"},
+ {k:"sw",g:"Network",l:"Core switch (Cisco Catalyst 9300 / Aruba CX 6300 class)",v:9000,u:"$ per switch",s:"https://www.cdw.com/product/Cisco-Catalyst-9300-Network-Essentials-switch-48-ports-managed-ra/4855640",sn:"CDW/Staples: $5,220–$11,343"},
+ {k:"edr",g:"Security",l:"Microsoft Defender for Servers Plan 2",v:15,u:"$ per server per month",s:"https://atonementlicensing.pages.dev/blog/defender-xdr-suite-pricing/",sn:"Atonement Licensing 2026"},
+ {k:"edrWs",g:"Security",l:"Defender for Endpoint Plan 2 (Windows 11 VMs)",v:5.2,u:"$ per device per month",s:"https://costbench.com/software/endpoint-security/microsoft-defender-endpoint",sn:"CostBench 2026"},
+ {k:"siemGB",g:"Security",l:"Microsoft Sentinel analytics ingestion (pay-as-you-go)",v:4.3,u:"$ per GB",s:"https://redresscompliance.com/microsoft-sentinel-licensing-pricing",sn:"Redress: $4.30/GB; published range $2.46–$5.20"},
+ {k:"siemVM",g:"Security",l:"Security log volume per server",v:0.15,u:"GB per day",s:"",sn:"Estimate. Defender for Servers P2 includes 500 MB/server/day of free ingestion, so server logs cost $0 when EDR is on"},
+ {k:"siemFw",g:"Security",l:"Firewall log volume",v:1,u:"GB per day",s:"",sn:"Estimate"},
+ {k:"pam",g:"Security",l:"Privileged access management (5-user minimum)",v:50,u:"$ per admin per month",s:"https://compliancestronghold.pages.dev/best-pam-solution",sn:"Published range $10–$85 per user; midpoint used"},
+ {k:"entra",g:"Identity",l:"Microsoft Entra ID P1 (needed for Conditional Access MFA)",v:7,u:"$ per user per month",s:"https://redresscompliance.com/microsoft-entra-id-pricing-buyer-guide",sn:"$7 list after the July 2026 increase"},
+ {k:"veeam",g:"Backup",l:"Veeam Data Platform Foundation",v:1550,u:"$ per 10 instances per year",s:"https://www.shi.com/product/46222325/Veeam-Data-Platform-Foundation-Universal-License",sn:"SHI: MSRP $1,550"},
+ {k:"repoTB",g:"Backup",l:"On-prem backup repository (HDD, incl. immutable)",v:0.75,u:"$ per TB per month",s:"https://datacenterdisk.com/reports/datacenter-storage-tco-2026",sn:"~$8.60/TB/yr 5-year TCO"},
+ {k:"cloudTB",g:"Backup",l:"Offsite object storage (Backblaze B2)",v:6.95,u:"$ per TB per month",s:"https://tech-insider.org/backblaze-b2-vs-wasabi-vs-s3-2026/",sn:"B2 $6.95; Wasabi $7.99"},
+ {k:"bkRatio",g:"Backup",l:"Backup size vs. VM disk (retention after dedupe)",v:1.5,u:"×",s:"",sn:"Estimate"}];
+const COST_CATS=["Hardware","Facility","Virtualization licensing","OS & app licensing","Storage","Network","Security","Identity","Backup"];
+const R=k=>{const o=S.rates&&S.rates[k];if(o!=null&&!isNaN(o))return+o;const r=RATES.find(x=>x.k===k);return r?r.v:0};
+const fmt$=n=>"$"+Math.round(n).toLocaleString("en-US");
+const DAYS=30.4;
+function costModel(){const am=R("amort"),items=[],shared=[];const add=(it,cat,label,amt)=>{if(amt>0.004)it.lines.push({cat,label,amt})};
+ const vmCost=v=>{const it={kind:"vm",id:v.id,did:did("VM",v.id),name:v.name,lines:[]};
+  if(v.role==="SQL Server")add(it,"OS & app licensing",`SQL Server Standard, ${Math.ceil(Math.max(v.vcpu,4)/2)*2} cores`,Math.ceil(Math.max(v.vcpu,4)/2)*R("sql")/12);
+  if(/Red Hat/.test(v.os))add(it,"OS & app licensing","RHEL Standard subscription",R("rhel")/12);
+  if(S.sec.edr)add(it,"Security",/Windows 11/.test(v.os)?"Defender for Endpoint P2":"Defender for Servers P2",/Windows 11/.test(v.os)?R("edrWs"):R("edr"));
+  if(S.sec.siem&&!S.sec.edr)add(it,"Security","Sentinel log ingestion",R("siemVM")*DAYS*R("siemGB"));
+  const jobs=S.backups.filter(b=>b.vmIds.includes(v.id));if(jobs.length){const tb=v.disk*R("bkRatio")/1000;add(it,"Backup","Veeam license",R("veeam")/10/12);
+   if(jobs.some(b=>b.target!=="offsite"))add(it,"Backup",`On-prem repository (${tb.toFixed(2)} TB)`,tb*R("repoTB"));if(jobs.some(b=>b.target==="offsite"))add(it,"Backup",`Offsite copy (${tb.toFixed(2)} TB)`,tb*R("cloudTB"))}
+  return it};
+ S.hosts.forEach(h=>{const it={kind:"host",id:h.id,did:did("HST",h.id),name:h.name,lines:[]};
+  add(it,"Hardware",`Server (${h.cpu} cores, ${h.ram} GB) over ${am} months`,(R("srvBase")+h.cpu*R("srvCore")+h.ram*R("srvGB"))/am);
+  add(it,"Facility",`Power, space, cooling (${R("kwHost")} kW)`,R("kwHost")*R("kw"));
+  if(h.hyp==="vmware")add(it,"Virtualization licensing",`vSphere Foundation, ${Math.max(h.cpu,32)} cores licensed`,Math.max(h.cpu,32)*R("vvf")/12);
+  const winVMs=S.vms.some(v=>v.hostId===h.id&&/Windows Server/.test(v.os));
+  if(h.hyp==="microsoft"||winVMs)add(it,h.hyp==="microsoft"?"Virtualization licensing":"OS & app licensing",`Windows Server Datacenter, ${Math.ceil(Math.max(h.cpu,16)/16)*16} cores${h.hyp==="microsoft"?" (includes Hyper-V)":" (covers Windows VMs)"}`,Math.ceil(Math.max(h.cpu,16)/16)*R("wsdc")/am);
+  items.push(it)});
+ S.vms.forEach(v=>items.push(vmCost(v)));
+ S.storage.forEach(s=>{const it={kind:"storage",id:s.id,did:did("STG",s.id),name:s.name,lines:[]};const per={san:"sanTB",nas:"nasTB",vsan:"hciTB",s2d:"hciTB",local:"localTB"}[s.type];
+  add(it,"Storage",`${STYPES[s.type]}, ${s.cap} TB over ${am} months`,s.cap*R(per)/am);if(s.type==="san"||s.type==="nas")add(it,"Facility",`Array power and space (${R("kwArray")} kW)`,R("kwArray")*R("kw"));items.push(it)});
+ if(S.hosts.length){const fw={kind:"net",id:"fw",did:"FW-001",name:"Edge firewall",lines:[]};add(fw,"Network","Firewall appliance",R("fwHw")/am);add(fw,"Network","UTP security subscription",R("fwSub")/12);items.push(fw);
+  const sw={kind:"net",id:"core",did:"SW-CORE",name:"Physical core switch",lines:[]};add(sw,"Network","Switch hardware",R("sw")/am);add(sw,"Facility",`Power and space (${R("kwNet")} kW)`,R("kwNet")*R("kw"));items.push(sw)}
+ S.vpn.forEach(t=>{const it={kind:"net",id:t.id,did:did("VPN",t.id),name:`${t.name} (${t.peer})`,lines:[]};add(it,"Network","Branch firewall appliance",R("brHw")/am);add(it,"Network","Branch UTP subscription",R("brSub")/12);items.push(it)});
+ const vmwCores=S.hosts.filter(h=>h.hyp==="vmware").reduce((a,h)=>a+Math.max(h.cpu,32),0);
+ if(vmwCores>0&&vmwCores<R("vmwMin"))shared.push({cat:"Virtualization licensing",label:`VMware ${R("vmwMin")}-core order minimum (${R("vmwMin")-vmwCores} unused cores)`,amt:(R("vmwMin")-vmwCores)*R("vvf")/12});
+ if(S.sec.mfa&&S.ad.users.length)shared.push({cat:"Identity",label:`Entra ID P1 × ${S.ad.users.length} users (MFA)`,amt:S.ad.users.length*R("entra")});
+ if(S.sec.pam){const a=S.ad.users.filter(u=>u.admin).length;shared.push({cat:"Security",label:`PAM × ${Math.max(5,a)} admins (${a} admin accounts, 5 minimum)`,amt:Math.max(5,a)*R("pam")})}
+ if(S.sec.siem)shared.push({cat:"Security",label:`Sentinel firewall logs (${R("siemFw")} GB/day)`,amt:R("siemFw")*DAYS*R("siemGB")});
+ items.forEach(it=>it.total=it.lines.reduce((a,l)=>a+l.amt,0));
+ const byCat={};COST_CATS.forEach(c=>byCat[c]=0);items.forEach(it=>it.lines.forEach(l=>byCat[l.cat]+=l.amt));shared.forEach(l=>byCat[l.cat]+=l.amt);
+ const total=Object.values(byCat).reduce((a,b)=>a+b,0);return{items,shared,byCat,total}}
+const costOf=(m,id)=>(m.items.find(i=>i.id===id)||{total:0,lines:[]});
+const costTitle=it=>it.lines.map(l=>`${l.label}: ${fmt$(l.amt)}`).join("\n")||"No direct costs";
+const costCell=(m,id)=>{const it=costOf(m,id);return`<td title="${esc(costTitle(it))}" style="white-space:nowrap">${it.total?fmt$(it.total):"—"}</td>`};
+let CM=null;const cm=()=>CM||(CM=costModel());
+function vCost(){const m=cm();if(!m.total)return`<div class="card" data-anchor="dash-cost"><h3>Projected monthly cost ${tip("cost")}</h3><div class="empty">Add hosts, storage or services to see a cost estimate.</div></div>`;
+ const max=Math.max(...Object.values(m.byCat));const top=[...m.items].sort((a,b)=>b.total-a.total).slice(0,8);const groups=[...new Set(RATES.map(r=>r.g))];
+ return`<div class="card" data-anchor="dash-cost"><div class="row" style="justify-content:space-between"><h3>Projected monthly cost ${tip("cost")}</h3><button class="sm" data-act="editRates">Edit assumptions</button></div>
+ <div class="row" style="align-items:baseline;gap:14px"><div class="score">${fmt$(m.total)}<span style="font-size:15px;color:var(--mute)"> /mo</span></div><div style="color:var(--mute)">${fmt$(m.total*12)} per year</div></div>
+ <table style="margin-top:8px">${COST_CATS.filter(c=>m.byCat[c]>0).map(c=>`<tr><td style="width:42%">${c}</td><td>${bar(m.byCat[c]/max*100).replace('class="bar"','class="bar" style="margin:0"')}</td><td style="text-align:right;white-space:nowrap">${fmt$(m.byCat[c])}</td></tr>`).join("")}</table>
+ <h3 style="margin-top:14px;font-size:13px">Biggest cost drivers</h3><table>${top.map(it=>`<tr title="${esc(costTitle(it))}"><td style="font-family:ui-monospace,Consolas,monospace;font-size:12px">${it.did}</td><td>${esc(it.name)}</td><td style="text-align:right">${fmt$(it.total)}</td></tr>`).join("")}</table>
+ ${m.shared.length?`<h3 style="margin-top:14px;font-size:13px">Shared costs (not tied to one device)</h3><table>${m.shared.map(l=>`<tr><td>${esc(l.label)}</td><td style="text-align:right">${fmt$(l.amt)}</td></tr>`).join("")}</table>`:""}
+ <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--acc)">Assumptions and sources (${RATES.length})</summary>
+ ${groups.map(g=>`<div style="font-size:12px;color:var(--mute);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em">${g}</div><table>${RATES.filter(r=>r.g===g).map(r=>`<tr><td>${esc(r.l)}</td><td style="white-space:nowrap">${R(r.k).toLocaleString("en-US")} <span style="color:var(--mute);font-size:11px">${esc(r.u)}</span>${S.rates&&S.rates[r.k]!=null?' <span class="pill warn">edited</span>':""}</td><td style="font-size:11px">${r.s?`<a href="${r.s}" target="_blank" rel="noopener" style="color:var(--acc)">${esc(r.sn)}</a>`:`<span style="color:var(--mute)">${esc(r.sn)}</span>`}</td></tr>`).join("")}</table>`).join("")}
+ <p style="font-size:12px;color:var(--mute)">Estimates use 2026 list or typical street prices in USD, before discounts and tax. Hardware and perpetual licenses are spread over the amortization period; subscriptions are annual price ÷ 12. Not included: internet circuits, Microsoft 365 user licenses, RDS CALs, staff time and support contracts beyond those listed.</p></details></div>`}
+Object.assign(A,{
+ editRates(){form("Edit cost assumptions",[{k:"_n",type:"note",label:"Change any rate to match your own quotes. Leave a value as-is to keep the market default. Totals update everywhere."},...RATES.map(r=>({k:r.k,label:`${r.l} (${r.u})`,type:"number",value:R(r.k)}))],f=>{
+  const o={};RATES.forEach(r=>{const v=parseFloat(f[r.k]);if(!isNaN(v)&&v>=0&&v!==r.v)o[r.k]=v});S.rates=o;log(`Cost assumptions updated (${Object.keys(o).length} custom rate${Object.keys(o).length===1?"":"s"})`,"ok")});
+  const fm=document.querySelector("#modalRoot form");if(fm&&S.rates&&Object.keys(S.rates).length){const b=document.createElement("button");b.type="button";b.textContent="Reset to market defaults";b.className="sm";b.onclick=()=>{S.rates={};closeModal();log("Cost assumptions reset to market defaults","ok");commit()};fm.querySelector(".row").prepend(b)}}});
 if(!S.log.length)log("Welcome. Load the sample environment or start from Datacenter → Add host. Hover (or tap) any ? for help.");
 if(innerWidth<760)document.getElementById("log").classList.add("min");
 render();
